@@ -145,6 +145,7 @@ void kvs_show(int fd) {
 }
 
 int kvs_backup(const char *job_file_path) {
+  printf("backupa\n");
   char output_file_path[MAX_JOB_FILE_NAME_SIZE]; 
   strncpy(output_file_path, job_file_path, strlen(job_file_path)-4);
   strcat(output_file_path, ".bck");

@@ -49,7 +49,7 @@
       case CMD_READ:
         num_pairs = parse_read_delete(input_fd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
         if (num_pairs == 0) {
-           fprintf(stderr, "Invalid command. See HELP for usage\n");
+          fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
 
@@ -62,7 +62,7 @@
         num_pairs = parse_read_delete(input_fd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
-            fprintf(stderr, "Invalid command. See HELP for usage\n");
+          fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
 
@@ -89,7 +89,7 @@
 
       case CMD_BACKUP:
 
-        if (kvs_backup() == 1) {
+        if (kvs_backup(job_file_path) == 1) {
            fprintf(stderr, "Failed to perform backup.\n");
         }
         break;
