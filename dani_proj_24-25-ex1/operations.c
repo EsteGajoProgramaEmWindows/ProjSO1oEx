@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
 #include "kvs.h"
 #include "operations.h"   
 #include "constants.h"
@@ -121,7 +122,6 @@ int kvs_delete(int fd, size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
   if (aux) {
     write_to_file(fd, ")]\n");
   }
-
   return 0;
 }
 
@@ -144,8 +144,18 @@ void kvs_show(int fd) {
   }
 }
 
-int kvs_backup() {
-  return 0;
+int kvs_backup(const char *job_file_path) {
+  char output_file_path[MAX_JOB_FILE_NAME_SIZE]; 
+  strncpy(output_file_path, job_file_path, strlen(job_file_path)-4);
+  strcat(output_file_path, ".bck");
+  int output_fd = open(output_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (output_fd < 0) {
+      perror("Failed to create backup file");
+     return 1;
+    }
+  kvs_show(output_fd);
+  close(output_fd);
+  return 0;    
 }
 
 void kvs_wait(unsigned int delay_ms) {
