@@ -74,7 +74,6 @@
         break;
 
       case CMD_SHOW:
-        printf("showa\n");
         kvs_show(STDOUT_FILENO);
         break;
 
