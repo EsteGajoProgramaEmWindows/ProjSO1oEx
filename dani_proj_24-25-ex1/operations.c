@@ -135,10 +135,10 @@ void kvs_show(int fd) {
       text = strcat(text, keyNode->key);
       text = strcat(text, ", ");
       text = strcat(text, keyNode->value);
-      text = strcat(text, ")");
-      write_to_file(fd, text);
+      text = strcat(text, ")\n");
       keyNode = keyNode->next; // Move to the next node
-      write_to_file(fd, "\n");
+      printf("%s", text);
+      write_to_file(fd, text);
       free(text);
     }
   }

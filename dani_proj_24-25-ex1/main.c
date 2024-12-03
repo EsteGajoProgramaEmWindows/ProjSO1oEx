@@ -74,12 +74,13 @@
         break;
 
       case CMD_SHOW:
-        kvs_show(output_fd);
+        printf("showa\n");
+        kvs_show(STDOUT_FILENO);
         break;
 
       case CMD_WAIT:
         if (parse_wait(input_fd, &delay, NULL) == -1) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
+          fprintf(stderr, "Invalid command Wt. See HELP for usage\n");
           break;
         }
 
