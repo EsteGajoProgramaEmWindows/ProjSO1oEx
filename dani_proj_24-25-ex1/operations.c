@@ -129,7 +129,7 @@ void kvs_show(int fd) {
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
-      char *text = malloc(strlen(keyNode->key) + strlen(keyNode->value) + 5);
+      char *text = malloc(strlen(keyNode->key) + strlen(keyNode->value) + 6);
       strcpy(text, "");
       text = strcat(text, "(");
       text = strcat(text, keyNode->key);

@@ -2,6 +2,4 @@ WRITE [(c1,v1)]
 READ [c1]
 BACKUP
 WAIT 1000
-DELETE [c1]
-READ [c1]
 SHOW
