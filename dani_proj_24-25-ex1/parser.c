@@ -129,18 +129,16 @@ enum Command get_next(int fd) {
       return CMD_SHOW;
 
     case 'B':
-      if (read(fd, buf + 1, 5) != 5 || strncmp(buf, "BACKUP", 6) != 0) {
+      /* if (read(fd, buf + 1, 5) != 5 || strncmp(buf, "BACKUP", 6) != 0) {
         cleanup(fd);
         return CMD_INVALID;
       }
 
-      printf("%c\n",buf[6]);
       if (read(fd, buf + 6, 1) != 0 && buf[6] != '\n') {
         cleanup(fd);
-        printf("%ld %s\n", strlen(buf), buf);
         return CMD_INVALID;
-      }
-
+      } */
+    
       return CMD_BACKUP;
 
     case 'H':

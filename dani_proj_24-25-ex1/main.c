@@ -35,7 +35,6 @@
   while (1) {
     switch (get_next(input_fd)) {
       case CMD_WRITE:
-        printf("escreve\n");
         num_pairs = parse_write(input_fd, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
         if (num_pairs == 0) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
@@ -48,7 +47,6 @@
         break;
 
       case CMD_READ:
-        printf("le\n");
         num_pairs = parse_read_delete(input_fd, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
         if (num_pairs == 0) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
@@ -91,7 +89,6 @@
 
       case CMD_BACKUP:
 
-        printf("baka\n");
         pid_t pid = fork();
         if(pid==0){
         if (kvs_backup(job_file_path) == 1) {
@@ -120,7 +117,6 @@
         break;
         
       case CMD_EMPTY:
-        printf("comenta\n");
         break;
 
       case EOC:
