@@ -146,6 +146,7 @@ void kvs_show(int fd) {
 int kvs_backup(const char *job_file_path) {
   char output_file_path[MAX_JOB_FILE_NAME_SIZE]; 
   strncpy(output_file_path, job_file_path, strlen(job_file_path)-4);
+  output_file_path[strlen(job_file_path) - 4] = '\0';
   strcat(output_file_path, ".bck");
   int output_fd = open(output_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (output_fd < 0) {
