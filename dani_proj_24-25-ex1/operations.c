@@ -145,12 +145,14 @@ void kvs_show(int fd) {
 }
 
 int kvs_backup(const char *job_file_path) {
-  char path_suffix[MAX_JOB_FILE_NAME_SIZE];
-  char output_file_path[MAX_JOB_FILE_NAME_SIZE]; 
-  strncpy(output_file_path, job_file_path, strlen(job_file_path)-4);
-  output_file_path[strlen(job_file_path) - 4] = '\0';
+    char base_path[MAX_JOB_FILE_NAME_SIZE];
+    char output_file_path[2 * MAX_JOB_FILE_NAME_SIZE]; // Increased buffer size
 
-      int backup_number = 1;
+    // Remove the last 4 characters to strip the extension
+    strncpy(base_path, job_file_path, strlen(job_file_path) - 4);
+    base_path[strlen(job_file_path) - 4] = '\0';
+
+    int backup_number = 1;
     struct dirent *entry;
     DIR *dir = opendir(".");
     if (dir == NULL) {
@@ -160,9 +162,9 @@ int kvs_backup(const char *job_file_path) {
 
     // Iterate over the directory to find the highest backup number
     while ((entry = readdir(dir)) != NULL) {
-        if (strstr(entry->d_name, output_file_path) == entry->d_name && strstr(entry->d_name, ".bck") != NULL) {
+        if (strncmp(entry->d_name, base_path, strlen(base_path)) == 0 && strstr(entry->d_name, ".bck") != NULL) {
             int current_backup_number;
-            if (sscanf(entry->d_name + strlen(output_file_path) + 1, "%d.bck", &current_backup_number) == 1) {
+            if (sscanf(entry->d_name + strlen(base_path) + 1, "%d.bck", &current_backup_number) == 1) {
                 if (current_backup_number >= backup_number) {
                     backup_number = current_backup_number + 1;
                 }
@@ -170,17 +172,18 @@ int kvs_backup(const char *job_file_path) {
         }
     }
     closedir(dir);
-  
-  sprintf(path_suffix, "-%d.bck", backup_number);
-  strcat(output_file_path, path_suffix);
-  int output_fd = open(output_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (output_fd < 0) {
-      perror("Failed to create backup file");
-     return 1;
+
+    // Create backup file with the next available number
+    snprintf(output_file_path, sizeof(output_file_path), "%s-%d.bck", base_path, backup_number);
+    int output_fd = open(output_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (output_fd < 0) {
+        perror("Failed to create backup file");
+        return 1;
     }
-  kvs_show(output_fd);
-  close(output_fd);
-  return 0;    
+    printf("Backup created\n");
+    kvs_show(output_fd);
+    close(output_fd);
+    return 0;
 }
 
 void kvs_wait(unsigned int delay_ms) {
