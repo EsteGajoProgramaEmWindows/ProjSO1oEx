@@ -100,7 +100,7 @@
         }
 
         pid_t pid = fork();
-        if(pid==0){
+        if(pid == 0){
         if (kvs_backup(job_file_path, num_backups) == 1) {
            fprintf(stderr, "Failed to perform backup.\n");
           }

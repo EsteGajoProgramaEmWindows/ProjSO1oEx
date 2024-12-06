@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include "kvs.h"
 #include "operations.h"   
 #include "constants.h"
@@ -143,13 +144,35 @@ void kvs_show(int fd) {
   }
 }
 
-int kvs_backup(const char *job_file_path, int num_backups) {
-  char suffix_path[10];
+int kvs_backup(const char *job_file_path) {
+  char path_suffix[MAX_JOB_FILE_NAME_SIZE];
   char output_file_path[MAX_JOB_FILE_NAME_SIZE]; 
   strncpy(output_file_path, job_file_path, strlen(job_file_path)-4);
   output_file_path[strlen(job_file_path) - 4] = '\0';
-  sprintf(suffix_path,"-%d.bck", num_backups);
-  strcat(output_file_path, suffix_path);
+
+      int backup_number = 1;
+    struct dirent *entry;
+    DIR *dir = opendir(".");
+    if (dir == NULL) {
+        perror("Failed to open directory");
+        return 1;
+    }
+
+    // Iterate over the directory to find the highest backup number
+    while ((entry = readdir(dir)) != NULL) {
+        if (strstr(entry->d_name, output_file_path) == entry->d_name && strstr(entry->d_name, ".bck") != NULL) {
+            int current_backup_number;
+            if (sscanf(entry->d_name + strlen(output_file_path) + 1, "%d.bck", &current_backup_number) == 1) {
+                if (current_backup_number >= backup_number) {
+                    backup_number = current_backup_number + 1;
+                }
+            }
+        }
+    }
+    closedir(dir);
+  
+  sprintf(path_suffix, "-%d.bck", backup_number);
+  strcat(output_file_path, path_suffix);
   int output_fd = open(output_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (output_fd < 0) {
       perror("Failed to create backup file");
