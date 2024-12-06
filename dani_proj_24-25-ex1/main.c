@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <sys/wait.h>
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
@@ -30,7 +31,7 @@
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   unsigned int delay;
   size_t num_pairs;
-  int num_backups=0;
+  int num_backups=1;
 
 
   while (1) {
@@ -90,19 +91,22 @@
 
       case CMD_BACKUP:
 
-        while(num_backups>=max_backups){
-          kvs_wait(1000);
+        while(num_backups>max_backups){
+          int status;
+          pid_t result = waitpid(-1, &status, WNOHANG);
+          if (result > 0){
+              num_backups--;
+          }
         }
 
         pid_t pid = fork();
-        num_backups++;
         if(pid==0){
         if (kvs_backup(job_file_path, num_backups) == 1) {
            fprintf(stderr, "Failed to perform backup.\n");
           }
           exit(0);
-          num_backups--;
         }
+        num_backups++;
         break;
 
       case CMD_INVALID:
