@@ -9,7 +9,7 @@
 #include "parser.h"
 #include "operations.h"
 
-  void process_job_file(const char *job_file_path) {
+  void process_job_file(const char *job_file_path, int max_backups) {
     int input_fd = open(job_file_path, O_RDONLY);
     if (input_fd < 0) {
         perror("Failed to open job file");
@@ -30,6 +30,7 @@
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   unsigned int delay;
   size_t num_pairs;
+  int num_backups=0;
 
 
   while (1) {
@@ -89,12 +90,18 @@
 
       case CMD_BACKUP:
 
+        while(num_backups>=max_backups){
+          kvs_wait(1000);
+        }
+
         pid_t pid = fork();
+        num_backups++;
         if(pid==0){
-        if (kvs_backup(job_file_path) == 1) {
+        if (kvs_backup(job_file_path, num_backups) == 1) {
            fprintf(stderr, "Failed to perform backup.\n");
           }
           exit(0);
+          num_backups--;
         }
         break;
 
@@ -168,7 +175,7 @@ int main(int argc, char *argv[]) {
         job_file_path[sizeof(job_file_path) - 1] = '\0'; // Ensure null-termination
         strncat(job_file_path, "/", sizeof(job_file_path) - strlen(job_file_path) - 1);
         strncat(job_file_path, entry->d_name, sizeof(job_file_path) - strlen(job_file_path) - 1);
-        process_job_file(job_file_path);
+        process_job_file(job_file_path, max_backups);
     }
 }
 
