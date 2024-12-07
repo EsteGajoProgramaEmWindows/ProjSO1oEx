@@ -144,18 +144,18 @@ void kvs_show(int fd) {
   }
 }
 
-int kvs_backup(const char *job_file_path) {
+int kvs_backup(const char *job_file_path, int backup_atual) {
     char base_path[MAX_JOB_FILE_NAME_SIZE];
     char output_file_path[2 * MAX_JOB_FILE_NAME_SIZE]; // Increased buffer size
 
     // Remove the last 4 characters to strip the extension
     strncpy(base_path, job_file_path, strlen(job_file_path) - 4);
     base_path[strlen(job_file_path) - 4] = '\0';
-
+/*
     int backup_number = 1;
     struct dirent *entry;
     DIR *dir = opendir(".");
-    if (dir == NULL) {
+    if (dir == NULL) {  
         perror("Failed to open directory");
         return 1;
     }
@@ -171,16 +171,16 @@ int kvs_backup(const char *job_file_path) {
             }
         }
     }
-    closedir(dir);
 
+    closedir(dir);
+*/
     // Create backup file with the next available number
-    snprintf(output_file_path, sizeof(output_file_path), "%s-%d.bck", base_path, backup_number);
+    snprintf(output_file_path, sizeof(output_file_path), "%s-%d.bck", base_path, backup_atual);
     int output_fd = open(output_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (output_fd < 0) {
         perror("Failed to create backup file");
         return 1;
     }
-    printf("Backup created\n");
     kvs_show(output_fd);
     close(output_fd);
     return 0;

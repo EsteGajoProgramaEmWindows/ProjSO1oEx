@@ -31,7 +31,8 @@
   char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
   unsigned int delay;
   size_t num_pairs;
-  int num_backups=1;
+  int num_backups = 1;
+  int backup_atual = 1;
 
 
   while (1) {
@@ -74,7 +75,7 @@
         break;
 
       case CMD_SHOW:
-        kvs_show(STDOUT_FILENO);
+      //  kvs_show(STDOUT_FILENO); //debugging
         break;
 
       case CMD_WAIT:
@@ -101,12 +102,13 @@
 
         pid_t pid = fork();
         if(pid == 0){
-        if (kvs_backup(job_file_path) == 1) {
+        if (kvs_backup(job_file_path, backup_atual) == 1) {
            fprintf(stderr, "Failed to perform backup.\n");
           }
           exit(0);
         }
         num_backups++;
+        backup_atual++;
         break;
 
       case CMD_INVALID:
