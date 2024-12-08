@@ -75,7 +75,7 @@
         break;
 
       case CMD_SHOW:
-      //  kvs_show(STDOUT_FILENO); //debugging
+        kvs_show(STDOUT_FILENO);
         break;
 
       case CMD_WAIT:
@@ -102,7 +102,7 @@
 
         pid_t pid = fork();
         if(pid == 0){
-        if (kvs_backup(job_file_path, backup_atual) == 1) {
+        if (kvs_backup(job_file_path, num_backups) == 1) {
            fprintf(stderr, "Failed to perform backup.\n");
           }
           exit(0);
@@ -112,7 +112,7 @@
         break;
 
       case CMD_INVALID:
-        fprintf(stderr, "Invalid command I. See HELP for usage\n");
+        //fprintf(stderr, "Invalid command I. See HELP for usage\n"); debugging
         break;
 
       case CMD_HELP:
