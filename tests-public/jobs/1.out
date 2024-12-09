@@ -1,2 +1,10 @@
-[(x,KVSERRORz,KVSERRORl,KVSERRORv,KVSERROR)]
-[(c,KVSERROR)]
+[(x,KVSERROR)(z,KVSERROR)(l,KVSERROR)(v,KVSERROR)]
+(a, anna)
+(b, bernardo)
+(c, carlota)
+(d, dinis)
+[(c,carlota)]
+(a, anna)
+(b, bernardo)
+(c, carlota)
+(d, dinis)

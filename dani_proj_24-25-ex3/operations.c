@@ -81,8 +81,10 @@ int kvs_read(int fd, size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
   write_to_file(fd, "[(");
   for (size_t i = 0; i < num_pairs; i++) {
     char* result = read_pair(kvs_table, keys[i]);
+    if(i != 0)
+      write_to_file(fd, "(");
     if (result == NULL) {
-      write_to_file(fd, strcat(keys[i], ",KVSERROR"));
+      write_to_file(fd, strcat(keys[i], ",KVSERROR)"));
     } else {
       char *text = (char*)malloc(strlen(keys[i]) + strlen(result) + 2);
       strcpy(text, "");
@@ -90,11 +92,12 @@ int kvs_read(int fd, size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
       text = strcat(text, ",");
       text = strcat(text, result);
       write_to_file(fd, text);
+      write_to_file(fd, ")");
       free(text);
     }
     free(result);
   }
-  write_to_file(fd, ")]\n");
+  write_to_file(fd, "]\n");
   return 0;
 }
 
@@ -111,17 +114,20 @@ int kvs_delete(int fd, size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
         write_to_file(fd,"[(");
         aux = 1;
       }
+      if(i != 0)
+        write_to_file(fd, "(");
       char *text = (char*)malloc(strlen(keys[i]) + strlen("KVSMISSING") + 2); 
       strcpy(text, "");
       text = strcat(text, keys[i]); 
       text = strcat(text, ",KVSMISSING");
       write_to_file(fd, text);
+      write_to_file(fd, ")");
       free(text);
     }
   }
 
   if (aux) {
-    write_to_file(fd, ")]\n");
+    write_to_file(fd, "]\n");
   }
   return 0;
 }

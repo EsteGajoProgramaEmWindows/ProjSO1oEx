@@ -116,7 +116,7 @@ enum Command get_next(int fd) {
       return CMD_DELETE;
 
     case 'S':
-      if (read(fd, buf + 1, 3) != 3 || strncmp(buf, "SHOW", 4) != 0) {
+      /* if (read(fd, buf + 1, 3) != 3 || strncmp(buf, "SHOW", 4) != 0) {
         cleanup(fd);
         return CMD_INVALID;
       }
@@ -124,7 +124,7 @@ enum Command get_next(int fd) {
       if (read(fd, buf + 4, 1) != 0 && buf[4] != '\n') {
         cleanup(fd);
         return CMD_INVALID;
-      }
+      } */
 
       return CMD_SHOW;
 

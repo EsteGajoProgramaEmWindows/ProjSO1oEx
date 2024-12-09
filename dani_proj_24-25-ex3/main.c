@@ -75,7 +75,7 @@
         break;
 
       case CMD_SHOW:
-      //  kvs_show(STDOUT_FILENO); //debugging
+        kvs_show(output_fd); //debugging
         break;
 
       case CMD_WAIT:
@@ -112,7 +112,7 @@
         break;
 
       case CMD_INVALID:
-        fprintf(stderr, "Invalid command I. See HELP for usage\n");
+        //fprintf(stderr, "Invalid command I. See HELP for usage\n");
         break;
 
       case CMD_HELP:
