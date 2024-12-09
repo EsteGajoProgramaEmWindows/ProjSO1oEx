@@ -11,7 +11,7 @@ results_dir="tests-public/results2"
 # Run executable and check results
 for job_folder in "$test_dir"/*/; do
     echo -e "\e[34mRunning executable: $executable $job_folder 1 \e[0m"
-    if ! ./"$executable" "$job_folder" 1 2; then
+    if ! ./"$executable" "$job_folder" 1; then  #o original é "1 2 
         echo -e "\e[31mExecutable failed\e[0m"
         exit 1
     fi
