@@ -142,6 +142,7 @@
 
 int parse_arguments(int argc, char *argv[], char *directory, int *max_backups) {
   if (argc != 3) {
+    printf(" erro no parse args\n");
     return -1;
   }
 
@@ -181,6 +182,7 @@ int main(int argc, char *argv[]) {
         job_file_path[sizeof(job_file_path) - 1] = '\0'; // Ensure null-termination
         strncat(job_file_path, "/", sizeof(job_file_path) - strlen(job_file_path) - 1);
         strncat(job_file_path, entry->d_name, sizeof(job_file_path) - strlen(job_file_path) - 1);
+        
         process_job_file(job_file_path, max_backups);
     }
 }

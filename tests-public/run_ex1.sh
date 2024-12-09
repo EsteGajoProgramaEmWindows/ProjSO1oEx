@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 # Get binary path from command line arguments
 if [ -z "$1" ]; then
     echo "Usage: $0 <executable>"
@@ -19,7 +19,7 @@ run_test() {
 
     cp "$file" "$temp_dir"
 
-    local cmd="$kvs_binary $temp_dir 1 1" #single threaded
+    local cmd="$kvs_binary $temp_dir 1" #single threaded, tirar ultimo um para sem threads
 
     eval "./$cmd" &> /dev/null
 
