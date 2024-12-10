@@ -6,11 +6,19 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/wait.h>
+#include <pthread.h>
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
 
-  void process_job_file(const char *job_file_path, int max_backups) {
+
+  typedef struct process_job_arguments{
+    int max_backups;
+    char job_file_path[MAX_JOB_FILE_NAME_SIZE];
+  }p_job_args_t;
+
+  void *process_job_file(const char *job_file_path, int max_backups) {
+    pthread_mutex_t lock;
     int input_fd = open(job_file_path, O_RDONLY);
     if (input_fd < 0) {
         perror("Failed to open job file");
@@ -140,13 +148,14 @@
   }
 }
 
-int parse_arguments(int argc, char *argv[], char *directory, int *max_backups) {
-  if (argc != 3) {
+int parse_arguments(int argc, char *argv[], char *directory, int *max_backups, int *max_threads) {
+  if (argc != 4) {
     return -1;
   }
 
   strcpy(directory, argv[1]);
   *max_backups = atoi(argv[2]);
+  *max_threads = atoi(argv[3]);
 
   return 0;
 }
@@ -154,14 +163,23 @@ int parse_arguments(int argc, char *argv[], char *directory, int *max_backups) {
 int main(int argc, char *argv[]) {
   char directory[MAX_JOB_FILE_NAME_SIZE];
   int max_backups;
-
-  if (parse_arguments(argc, argv, directory, &max_backups) != 0) {
-        return 1;
-    }
+  int max_threads;
+  int num_threads;
+  p_job_args_t *args;
+  pthread_t *tid;
 
   if (kvs_init()) {
     return 1;
   }
+
+  if (parse_arguments(argc, argv, directory, &max_backups, &max_threads) != 0) {
+        return 1;
+  }
+  tid = (pthread_t*)malloc(sizeof(pthread_t)*max_threads); 
+  args = (p_job_args_t*)malloc(sizeof(p_job_args_t)*max_threads);
+
+  
+
 
   DIR *dir = opendir(directory);
     if (!dir) {
@@ -174,14 +192,26 @@ int main(int argc, char *argv[]) {
   while ((entry = readdir(dir)) != NULL) {
     // Check if the entry is a regular file and ends with ".job"
     if (strstr(entry->d_name, ".job") != NULL) {
-        char job_file_path[2 * MAX_JOB_FILE_NAME_SIZE];  // Increased buffer size for safety
+        char job_file_path[MAX_JOB_FILE_NAME_SIZE];  // Increased buffer size for safety
         job_file_path[0] = '\0';
-
         strncpy(job_file_path, directory, sizeof(job_file_path) - 4);
         job_file_path[sizeof(job_file_path) - 1] = '\0'; // Ensure null-termination
         strncat(job_file_path, "/", sizeof(job_file_path) - strlen(job_file_path) - 1);
         strncat(job_file_path, entry->d_name, sizeof(job_file_path) - strlen(job_file_path) - 1);
-        process_job_file(job_file_path, max_backups);
+
+        // creates a new thread to process job files
+        while(max_threads > num_threads){
+          pthread_join(tid, NULL); // waits for the thread terminates 
+          num_threads--;
+        }
+        if(pthread_create(&tid, 0, process_job_file, job_file_path, max_backups)){
+          printf("Criada a thread com ID %lu\n", (unsigned long)tid); //debugging 
+        }
+        else{
+           fprintf(stderr, "Failed to create thread.\n");
+            exit(1);
+        }
+        // process_job_file(job_file_path, max_backups);
     }
 }
 
