@@ -23,4 +23,6 @@ void enqueue(queue_t *queue, char file_name[]);
 
 void pop(char file_name[] , queue_t * queue);
 
+void destroy_queue(queue_t *queue);
+
 #endif 

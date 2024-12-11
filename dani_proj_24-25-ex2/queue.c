@@ -41,4 +41,18 @@ void pop(char file_name[] , queue_t * queue){
 
 }
 
+void destroy_queue(queue_t *queue) {
+    node_queue_t *current = queue->head;
+    node_queue_t *next_node;
+
+    while (current != NULL) {
+        next_node = current->next;
+        free(current);  // Libera o nó atual
+        current = next_node;
+    }
+
+    free(queue);
+}
+
+
 

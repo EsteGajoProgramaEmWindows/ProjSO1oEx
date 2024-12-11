@@ -22,9 +22,9 @@
   pthread_mutex_t lock_table;
  
   void *process_job_file(void* args) {
-    printf("Ola"); // debugging
+    printf("Ola - thread inicializada\n"); // Debugging para ver se a thread está sendo iniciada
     sleep(10);
-    printf("Ola");  
+    printf("Ola após sleep\n");  // Ver se a thread acorda do sleep
     p_job_args_t* args_aux = (p_job_args_t*)args;
     char job_file_path[MAX_JOB_FILE_NAME_SIZE];
 
@@ -100,9 +100,10 @@
         case CMD_SHOW:
           // locks the mutex
           pthread_mutex_lock(&lock_table);
-        break;
         // unlocks the mutex
         pthread_mutex_unlock(&lock_table);
+          break;
+
 
         case CMD_WAIT:
           if (parse_wait(input_fd, &delay, NULL) == -1) {
@@ -254,6 +255,10 @@ int main(int argc, char *argv[]) {
     pthread_join(tid[i], NULL);
   }
 
+  free(tid);
+  free(args);
+  destroy_queue(jobs_queue);
+
   // destroy the mutex 
   pthread_mutex_destroy(&lock_queue);
    // destroy the mutex 
@@ -263,7 +268,7 @@ int main(int argc, char *argv[]) {
   // Close the directory after reading it
   closedir(dir);
 
-  free(tid);
+
 
   kvs_terminate();
   return 0;
