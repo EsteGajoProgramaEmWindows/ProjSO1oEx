@@ -2,6 +2,7 @@
 #include "string.h"
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <ctype.h>
 #include "constants.h"
 
@@ -36,10 +37,11 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     //Obtains the correspondent lock 
     pthread_mutex_t *lock = &ht->lock_key[index]; 
     // locks the mutex correspondent
-    pthread_mutex_lock(lock);
     KeyNode *keyNode = ht->table[index];
+    pthread_mutex_lock(lock);
      
     // Search for the key node
+    printf("write1\n");
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {
             free(keyNode->value);
@@ -49,6 +51,7 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
         }
         keyNode = keyNode->next; // Move to the next node
     }
+    //printf("write2\n");
 
     // Key not found, create a new key node
     keyNode = malloc(sizeof(KeyNode));

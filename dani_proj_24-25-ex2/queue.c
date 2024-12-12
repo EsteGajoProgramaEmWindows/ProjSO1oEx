@@ -1,4 +1,6 @@
 #include "queue.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 queue_t* create_queue(){
     queue_t* new_queue = (queue_t*)malloc(sizeof(queue_t));

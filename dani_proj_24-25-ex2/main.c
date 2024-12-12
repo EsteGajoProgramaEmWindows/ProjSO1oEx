@@ -20,6 +20,10 @@
 
   pthread_mutex_t lock_queue;
   pthread_mutex_t lock_table;
+
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+  int finished_threads = 0;
  
   void *process_job_file(void* args) {
     printf("Ola - thread inicializada\n"); // Debugging para ver se a thread está sendo iniciada
@@ -30,7 +34,7 @@
 
     while(!isEmpty(args_aux->job_queue)){
 
-      printf("ID da Thread %ld", pthread_self()); // debugging
+      printf("ID da Thread %ld\n", pthread_self()); // debugging
 
       pthread_mutex_lock(&lock_queue); // locks the mutex
       pop(job_file_path, args_aux->job_queue); 
@@ -167,6 +171,11 @@
       }
     }
   }
+  pthread_mutex_lock(&mutex);
+  finished_threads++;
+  pthread_cond_signal(&cond);
+  pthread_mutex_unlock(&mutex);
+
   pthread_exit(NULL);
 }
   
@@ -189,7 +198,7 @@ int main(int argc, char *argv[]) {
   char directory[MAX_JOB_FILE_NAME_SIZE];
   int max_backups;
   int max_threads;
-  //int num_threads;
+  int num_threads;
   p_job_args_t *args;
   pthread_t *tid;
 
@@ -244,6 +253,7 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < max_threads; i++){
     if(pthread_create(&tid[i], NULL, process_job_file,(void*)args) == 0){
+      num_threads++;
       printf("Criada a thread com ID %lu\n", (unsigned long)tid[i]); //debugging 
       }
     else{
@@ -252,9 +262,21 @@ int main(int argc, char *argv[]) {
       }
     }
   
-  for(int i = 0; i < max_threads; i++){
+    pthread_mutex_lock(&mutex);
+    while (finished_threads < max_threads) {
+      pthread_cond_wait(&cond, &mutex);
+      for (int i = 0; i < max_threads; i++) {
+        if (pthread_join(tid[i], NULL) == 0) {
+          num_threads--;
+          printf("Joined thread %d\n", i);
+        }
+      }
+    }
+    pthread_mutex_unlock(&mutex);
+
+  /* for(int i = 0; i < max_threads; i++){
     pthread_join(tid[i], NULL);
-  }
+  } */
 
   free(tid);
   free(args);
@@ -265,11 +287,11 @@ int main(int argc, char *argv[]) {
    // destroy the mutex 
   pthread_mutex_destroy(&lock_table);
   // process_job_file(job_file_path, max_backups);
+  pthread_mutex_destroy(&mutex);
+  pthread_cond_destroy(&cond);
 
   // Close the directory after reading it
   closedir(dir);
-
-
 
   kvs_terminate();
   return 0;

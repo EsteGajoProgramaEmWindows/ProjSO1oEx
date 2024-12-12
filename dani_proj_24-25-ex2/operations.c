@@ -19,6 +19,12 @@ static struct timespec delay_to_timespec(unsigned int delay_ms) {
   return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
 
+int order_keys(const void *a, const void *b) {
+    const char (*key_a)[MAX_STRING_SIZE] = a;
+    const char (*key_b)[MAX_STRING_SIZE] = b;
+    return strcmp(*key_a, *key_b);
+}
+
 void write_to_file(int fd, const char *data){
       size_t len = strlen(data);
       ssize_t written = 0;
@@ -60,13 +66,14 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
     fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
+  
+  qsort(keys, num_pairs, MAX_STRING_SIZE, order_keys);
 
   for (size_t i = 0; i < num_pairs; i++) {
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
       fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
     }
   }
-
   return 0;
 }
 
@@ -78,6 +85,7 @@ int kvs_read(int fd, size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
     return 1;
   }
 
+  qsort(keys, num_pairs, MAX_STRING_SIZE, order_keys);
   write_to_file(fd, "[(");
   for (size_t i = 0; i < num_pairs; i++) {
     char* result = read_pair(kvs_table, keys[i]);
@@ -105,6 +113,7 @@ int kvs_delete(int fd, size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
   }
   int aux = 0;
 
+  qsort(keys, num_pairs, MAX_STRING_SIZE, order_keys);
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(kvs_table, keys[i]) != 0) {
       if (!aux) {

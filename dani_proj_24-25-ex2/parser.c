@@ -101,10 +101,10 @@ enum Command get_next(int fd) {
       return CMD_WAIT;
 
     case 'R':
-      if (read(fd, buf + 1, 4) != 4 || strncmp(buf, "READ ", 5) != 0) {
+      /* if (read(fd, buf + 1, 4) != 4 || strncmp(buf, "READ ", 5) != 0) {
         cleanup(fd);
         return CMD_INVALID;
-      }
+      } */
 
       return CMD_READ;
 
