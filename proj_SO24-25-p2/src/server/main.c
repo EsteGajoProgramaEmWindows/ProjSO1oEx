@@ -7,12 +7,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
 #include "io.h"
 #include "pthread.h"
+#include <errno.h>
 
 struct SharedData {
   DIR* dir;
@@ -323,11 +325,17 @@ int main(int argc, char** argv) {
     return 0;
   }
 
- 
+  char buffer[41];
+
+  // Remove existing FIFO if any
+  if (unlink(register_fifo_path) != 0) { 
+    write_str(STDERR_FILENO, "unlink failed\n");
+  } 
 
   // Creates register fifo
-  if(mkfifo(register_fifo_path, 0640)!=0) {
-    write_str(STDERR_FILENO, "mkfifo failed");
+  if(mkfifo(register_fifo_path, 0777)!=0) {
+    write_str(STDERR_FILENO, "mkfifo failed\n");
+    printf("%d\n", errno);
     return 1;
   }
 
@@ -339,8 +347,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  
+  read(fd_register, buffer, sizeof(buffer));
 
+  printf("%s buffer:",buffer);
 
   dispatch_threads(dir);
 

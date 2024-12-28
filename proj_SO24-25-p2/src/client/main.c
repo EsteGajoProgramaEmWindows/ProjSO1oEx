@@ -29,8 +29,13 @@ int main(int argc, char* argv[]) {
   strncat(resp_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
   strncat(notif_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
 
-  // TODO open pipes
-
+  // TODO open pipes 
+  int notif_pipe;
+  if(kvs_connect(req_pipe_path, resp_pipe_path, argv[2], notif_pipe_path, &notif_pipe) != 0){
+    fprintf(stderr, "Failed to connect to the server\n");
+    return 1;
+  }
+  
   while (1) {
     switch (get_next(STDIN_FILENO)) {
       case CMD_DISCONNECT:
