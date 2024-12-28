@@ -27,6 +27,8 @@ size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
 size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;
+char* register_fifo_path = NULL;
+int fd_register;
 
 int filter_job_files(const struct dirent* entry) {
     const char* dot = strrchr(entry->d_name, '.');
@@ -272,12 +274,13 @@ static void dispatch_threads(DIR* dir) {
 
 
 int main(int argc, char** argv) {
-  if (argc < 4) {
+  if (argc < 5) {
     write_str(STDERR_FILENO, "Usage: ");
     write_str(STDERR_FILENO, argv[0]);
     write_str(STDERR_FILENO, " <jobs_dir>");
 		write_str(STDERR_FILENO, " <max_threads>");
-		write_str(STDERR_FILENO, " <max_backups> \n");
+		write_str(STDERR_FILENO, " <max_backups>");
+    write_str(STDERR_FILENO, "<resgister_fifo_path> \n");
     return 1;
   }
 
@@ -285,6 +288,7 @@ int main(int argc, char** argv) {
 
   char* endptr;
   max_backups = strtoul(argv[3], &endptr, 10);
+  register_fifo_path = argv[4];
 
   if (*endptr != '\0') {
     fprintf(stderr, "Invalid max_proc value\n");
@@ -318,6 +322,25 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Failed to open directory: %s\n", argv[1]);
     return 0;
   }
+
+ 
+
+  // Creates register fifo
+  if(mkfifo(register_fifo_path, 0640)!=0) {
+    write_str(STDERR_FILENO, "mkfifo failed");
+    return 1;
+  }
+
+  // Opens register fifo for reading
+  fd_register = open(register_fifo_path, O_RDONLY);
+
+  if(fd_register == -1) {
+    write_str(STDERR_FILENO, "open failed");
+    return 1;
+  }
+
+  
+
 
   dispatch_threads(dir);
 
