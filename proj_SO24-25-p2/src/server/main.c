@@ -275,12 +275,18 @@ static void dispatch_threads(DIR* dir) {
 }
 
 static void* manages_register_fifo(char *register_fifo_path){
+
   char buffer[41];
 
+  // Opens register fifo for reading
+  fd_register = open(register_fifo_path, O_RDONLY);
+
+  if(fd_register == -1) {
+    write_str(STDERR_FILENO, "open failed");
+    return 1;
+  }
+
   while(1){
-    
-    // Opens register fifo for reading
-    fd_register = open(register_fifo_path, O_RDONLY);
 
     if(fd_register == -1) {
       write_str(STDERR_FILENO, "open failed");
@@ -292,7 +298,7 @@ static void* manages_register_fifo(char *register_fifo_path){
     printf("%s buffer:",buffer);
 
   }
-
+  pthread_exit(NULL);
 }
 
 
@@ -354,11 +360,13 @@ int main(int argc, char** argv) {
   } 
 
   // Creates register fifo
-  if(mkfifo(register_fifo_path, 0777)!=0) {
+  if(mkfifo(register_fifo_path, 0640)!=0) {
     write_str(STDERR_FILENO, "mkfifo failed\n");
     printf("%d\n", errno);
     return 1;
   }
+
+  
 
   //Create host thread
   pthread_create(&host_thread, NULL, manages_register_fifo, NULL);

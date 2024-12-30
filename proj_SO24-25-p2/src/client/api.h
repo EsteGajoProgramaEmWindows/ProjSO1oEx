@@ -26,5 +26,8 @@ int kvs_subscribe(const char* key);
 /// @return 0 if the key was unsubscribed successfully  (subscription existed and was removed), 1 otherwise.
 
 int kvs_unsubscribe(const char* key);
+
+// reads the notification pipe
+static void* notifications_handler();
  
 #endif  // CLIENT_API_H
