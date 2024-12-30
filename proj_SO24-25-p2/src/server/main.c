@@ -278,18 +278,7 @@ static void* manages_register_fifo(char *register_fifo_path){
   char buffer[41];
 
   while(1){
-    // Remove existing FIFO if any
-    if (unlink(register_fifo_path) != 0) { 
-      write_str(STDERR_FILENO, "unlink failed\n");
-    } 
-
-    // Creates register fifo
-    if(mkfifo(register_fifo_path, 0777)!=0) {
-      write_str(STDERR_FILENO, "mkfifo failed\n");
-      printf("%d\n", errno);
-      return 1;
-    }
-
+    
     // Opens register fifo for reading
     fd_register = open(register_fifo_path, O_RDONLY);
 
@@ -357,6 +346,18 @@ int main(int argc, char** argv) {
   if (dir == NULL) {
     fprintf(stderr, "Failed to open directory: %s\n", argv[1]);
     return 0;
+  }
+
+  // Remove existing FIFO if any
+  if (unlink(register_fifo_path) != 0) { 
+    write_str(STDERR_FILENO, "unlink failed\n");
+  } 
+
+  // Creates register fifo
+  if(mkfifo(register_fifo_path, 0777)!=0) {
+    write_str(STDERR_FILENO, "mkfifo failed\n");
+    printf("%d\n", errno);
+    return 1;
   }
 
   //Create host thread
