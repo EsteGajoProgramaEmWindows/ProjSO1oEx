@@ -274,6 +274,38 @@ static void dispatch_threads(DIR* dir) {
   free(threads);
 }
 
+static void* manages_register_fifo(char *register_fifo_path){
+  char buffer[41];
+
+  while(1){
+    // Remove existing FIFO if any
+    if (unlink(register_fifo_path) != 0) { 
+      write_str(STDERR_FILENO, "unlink failed\n");
+    } 
+
+    // Creates register fifo
+    if(mkfifo(register_fifo_path, 0777)!=0) {
+      write_str(STDERR_FILENO, "mkfifo failed\n");
+      printf("%d\n", errno);
+      return 1;
+    }
+
+    // Opens register fifo for reading
+    fd_register = open(register_fifo_path, O_RDONLY);
+
+    if(fd_register == -1) {
+      write_str(STDERR_FILENO, "open failed");
+      return 1;
+    }
+
+    read(fd_register, buffer, sizeof(buffer));
+
+    printf("%s buffer:",buffer);
+
+  }
+
+}
+
 
 int main(int argc, char** argv) {
   if (argc < 5) {
@@ -282,10 +314,12 @@ int main(int argc, char** argv) {
     write_str(STDERR_FILENO, " <jobs_dir>");
 		write_str(STDERR_FILENO, " <max_threads>");
 		write_str(STDERR_FILENO, " <max_backups>");
-    write_str(STDERR_FILENO, "<resgister_fifo_path> \n");
+    write_str(STDERR_FILENO, " <resgister_fifo_path> \n");
     return 1;
   }
 
+  // Create the variable that holds the id of the host thread
+  pthread_t* host_thread = malloc(sizeof(pthread_t));
   jobs_directory = argv[1];
 
   char* endptr;
@@ -325,31 +359,8 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  char buffer[41];
-
-  // Remove existing FIFO if any
-  if (unlink(register_fifo_path) != 0) { 
-    write_str(STDERR_FILENO, "unlink failed\n");
-  } 
-
-  // Creates register fifo
-  if(mkfifo(register_fifo_path, 0777)!=0) {
-    write_str(STDERR_FILENO, "mkfifo failed\n");
-    printf("%d\n", errno);
-    return 1;
-  }
-
-  // Opens register fifo for reading
-  fd_register = open(register_fifo_path, O_RDONLY);
-
-  if(fd_register == -1) {
-    write_str(STDERR_FILENO, "open failed");
-    return 1;
-  }
-
-  read(fd_register, buffer, sizeof(buffer));
-
-  printf("%s buffer:",buffer);
+  //Create host thread
+  pthread_create(&host_thread, NULL, manages_register_fifo, NULL);
 
   dispatch_threads(dir);
 
@@ -363,6 +374,8 @@ int main(int argc, char** argv) {
     active_backups--;
   }
 
+  pthread_join(*host_thread, NULL);
+  free(host_thread);
   kvs_terminate();
 
   return 0;
