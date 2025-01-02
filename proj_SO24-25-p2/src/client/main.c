@@ -11,7 +11,21 @@
 #include "src/common/io.h"
 
 
+static void* notifications_handler(void *fd_notification){
+  int* fd_notif = (int*) fd_notification;
+  char buffer[MAX_STRING_SIZE];
+  while (1){
+    read(fd_notif, buffer, MAX_STRING_SIZE);
+    write(STDOUT_FILENO, buffer, MAX_STRING_SIZE);
+  }
+  pthread_exit(NULL);
+}
+
+
 int main(int argc, char* argv[]) {
+
+  pthread_t* notif_thread;
+
   if (argc < 3) {
     fprintf(stderr, "Usage: %s <client_unique_id> <register_pipe_path>\n", argv[0]);
     return 1;
@@ -35,7 +49,10 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Failed to connect to the server\n");
     return 1;
   }
-  
+
+  // creates notifications thread
+  pthread_create(&notif_thread, NULL, notifications_handler, (void*)&notif_pipe);
+
   while (1) {
     switch (get_next(STDIN_FILENO)) {
       case CMD_DISCONNECT:
@@ -44,6 +61,18 @@ int main(int argc, char* argv[]) {
           return 1;
         }
         // TODO: end notifications thread
+        pthread_join(*notif_thread, NULL);
+        free(notif_thread);
+        
+        if(unlink(req_pipe_path) != 0) {
+          perror("Error removing request pipe");
+        }
+        if(unlink(resp_pipe_path)!= 0) {
+          perror("Error removing response pipe");
+        }
+        if(unlink(notif_pipe_path)!= 0) {
+          perror("Error removing notification pipe");
+        }
         printf("Disconnected from server\n");
         return 0;
 

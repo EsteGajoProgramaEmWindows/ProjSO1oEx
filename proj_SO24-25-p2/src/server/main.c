@@ -8,13 +8,14 @@
 #include <sys/wait.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
 #include "io.h"
 #include "pthread.h"
-#include <errno.h>
+
 
 struct SharedData {
   DIR* dir;
@@ -274,27 +275,30 @@ static void dispatch_threads(DIR* dir) {
   free(threads);
 }
 
-static void* manages_register_fifo(char *register_fifo_path){
+static void* manages_register_fifo(void *register_fifo_path){
 
+  char *regist_fifo_path = (char*) register_fifo_path;
   char buffer[41];
+  pthread_t* manager_thread;
+  int ret;
 
   // Opens register fifo for reading
-  fd_register = open(register_fifo_path, O_RDONLY);
+  fd_register = open(regist_fifo_path, O_RDONLY);
 
   if(fd_register == -1) {
     write_str(STDERR_FILENO, "open failed");
-    return 1;
   }
 
   while(1){
 
     if(fd_register == -1) {
       write_str(STDERR_FILENO, "open failed");
-      return 1;
     }
 
-    read(fd_register, buffer, sizeof(buffer));
-
+    ret = read(fd_register, buffer, sizeof(buffer));
+    if(ret == 0){
+//      pthread_create(manager_thread, NULL, manager_thread_handler, void(*))
+    }
     printf("%s buffer:",buffer);
 
   }
@@ -366,10 +370,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  
 
   //Create host thread
-  pthread_create(&host_thread, NULL, manages_register_fifo, NULL);
+  pthread_create(host_thread, NULL, manages_register_fifo, NULL);
 
   dispatch_threads(dir);
 

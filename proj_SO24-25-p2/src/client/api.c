@@ -12,6 +12,10 @@
 #include "src/common/constants.h"
 #include "src/common/protocol.h"
 
+int fd_response;
+int fd_request;
+int fd_notification; 
+
 
 int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char const* server_pipe_path,
                 char const* notif_pipe_path, int* notif_pipe) {
@@ -19,13 +23,7 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
 
   // create pipes and connect
 
-  pthread_t* notif_thread;
-
   int fd_register;
-  int fd_request;
-  int fd_response;
-  int fd_notification;
-
   // creates and opens request pipe for writing
   if(mkfifo(req_pipe_path, 0640)!=0){
     perror("Error creating request pipe");
@@ -57,17 +55,15 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
     return 1;
   }
 
-  fd_notification = open(notif_pipe_path, O_WRONLY);
-  if(fd_notification == -1){
+  *notif_pipe = open(notif_pipe_path, O_WRONLY);
+ 
+  if(*notif_pipe == -1){
     perror("Error opening notification pipe");
     return 1;
   }
 
-  // creates notifications thread
-  pthread_create(&notif_thread, NULL, notifications_handler, (void*)&fd_notification);
-
-
   printf("Opening fifo\n");
+
   fd_register = open(server_pipe_path, O_WRONLY);
   if (fd_register == -1) {
     perror("Error opening the server pipe");
@@ -75,11 +71,9 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   }
 
   char buffer[MAX_STRING_SIZE];
-  strcpy(buffer, "1 ");
+  strcpy(buffer, "1");
   strcat(buffer, req_pipe_path);
-  strcat(buffer, " ");
   strcat(buffer, resp_pipe_path);
-  strcat(buffer, " ");
   strcat(buffer, notif_pipe_path);
 
   printf("Writing to server pipe\n");
@@ -87,17 +81,40 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
 
   close(fd_register);
   printf("Closing fifo\n"); 
-  pthread_join(notif_thread, NULL);
+
   return 0;
 }
  
 int kvs_disconnect(void) {
   // close pipes and unlink pipe files
+  char buffer[MAX_STRING_SIZE] = "2";
+  write(fd_response, buffer, strlen(buffer)); 
+  close(fd_response);
+  close(fd_request);
+  close(fd_notification); 
   return 0;
 }
 
 int kvs_subscribe(const char* key) {
   // send subscribe message to request pipe and wait for response in response pipe
+  char buffer_response[3];
+  char message[MAX_STRING_SIZE];
+  // the buffer has 42 characters to allocate memory for the opcode one char and the key 41 characters
+  char buffer_request[42] = "3";
+
+  strcat(buffer_request, key);
+  write(fd_request, buffer_request, strlen(key));
+
+  read(fd_response, buffer_response, strlen(buffer_response));
+
+  // Store the result as a string
+  char result[2] = {buffer_response[1], '\0'}; 
+
+
+  strcpy(message, "Server returned");
+  strcat(message, result);
+  strcat(message, "for operation:subscribe");
+  write(STDOUT_FILENO, message, strlen(message));
   return 0;
 }
 
@@ -105,15 +122,4 @@ int kvs_unsubscribe(const char* key) {
     // send unsubscribe message to request pipe and wait for response in response pipe
   return 0;
 }
-
-static void* notifications_handler(void *fd_notification){
-  int* fd_notif = (int*) fd_notification;
-  char buffer[MAX_STRING_SIZE];
-  while (1){
-    read(fd_notif, buffer, MAX_STRING_SIZE);
-    write(STDOUT_FILENO, buffer, MAX_STRING_SIZE);
-  }
-  pthread_exit(NULL);
-}
-
 
