@@ -24,6 +24,9 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   // create pipes and connect
 
   int fd_register;
+  char buffer[MAX_STRING_SIZE];
+  char buffer_response[3];
+  char message[MAX_STRING_SIZE];
   // creates and opens request pipe for writing
   if(mkfifo(req_pipe_path, 0640)!=0){
     perror("Error creating request pipe");
@@ -70,7 +73,7 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
     return 1;
   }
 
-  char buffer[MAX_STRING_SIZE];
+  
   strcpy(buffer, "1");
   strcat(buffer, req_pipe_path);
   strcat(buffer, resp_pipe_path);
@@ -81,14 +84,33 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
 
   close(fd_register);
   printf("Closing fifo\n"); 
+  read(fd_response, buffer_response, strlen(buffer_response));
+  // Store the result as a string
+  char result[2] = {buffer_response[1], '\0'}; 
+  strcpy(message, "Server returned");
+  strcat(message, result);
+  strcat(message, "for operation:connect");
+  write(STDOUT_FILENO, message, strlen(message));
 
   return 0;
 }
  
 int kvs_disconnect(void) {
   // close pipes and unlink pipe files
+  char buffer_response[3];
+  char message[MAX_STRING_SIZE];
   char buffer[MAX_STRING_SIZE] = "2";
-  write(fd_response, buffer, strlen(buffer)); 
+  write(fd_request, buffer, strlen(buffer)); 
+  read(fd_response,buffer_response, strlen(buffer_response));
+  // Store the result as a string
+  char result[2] = {buffer_response[1], '\0'}; 
+
+  strcpy(message, "Server returned");
+  strcat(message, result);
+  strcat(message, "for operation:disconnect");
+
+  write(STDOUT_FILENO, message, strlen(message));
+
   close(fd_response);
   close(fd_request);
   close(fd_notification); 
@@ -120,6 +142,24 @@ int kvs_subscribe(const char* key) {
 
 int kvs_unsubscribe(const char* key) {
     // send unsubscribe message to request pipe and wait for response in response pipe
+  char buffer_response[3];
+  char message[MAX_STRING_SIZE];
+  // the buffer has 42 characters to allocate memory for the opcode one char and the key 41 characters
+  char buffer_request[42] = "4";
+
+  strcat(buffer_request, key);
+  write(fd_request, buffer_request, strlen(key));
+
+  read(fd_response, buffer_response, strlen(buffer_response));
+
+  // Store the result as a string
+  char result[2] = {buffer_response[1], '\0'}; 
+
+
+  strcpy(message, "Server returned");
+  strcat(message, result);
+  strcat(message, "for operation:unsubscribe");
+  write(STDOUT_FILENO, message, strlen(message));
   return 0;
 }
 
