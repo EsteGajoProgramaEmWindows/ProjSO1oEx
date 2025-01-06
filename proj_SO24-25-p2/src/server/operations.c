@@ -55,6 +55,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
       fprintf(stderr, "Failed to write key pair (%s,%s)\n", keys[i], values[i]);
     }
+    // abre o fifo de notifications cada um dos clientes que subscreveram essa chave e envia a notificação
   }
 
   pthread_rwlock_unlock(&kvs_table->tablelock);

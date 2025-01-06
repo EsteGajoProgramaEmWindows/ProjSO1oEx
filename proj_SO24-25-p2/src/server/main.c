@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+#include "protocol.h"
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
@@ -23,8 +24,16 @@ struct SharedData {
   pthread_mutex_t directory_mutex;
 };
 
+typedef struct ManagerData{
+  char response_fifo_name[40];
+  char request_fifo_name[40];
+  char notification_fifo_name[40];
+} t_manager_data;
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
+int result_connect;
+int result_disconnect;
 
 size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
@@ -88,7 +97,7 @@ static int run_job(int in_fd, int out_fd, char* filename) {
 
         if (num_pairs == 0) {
           write_str(STDERR_FILENO, "Invalid command. See HELP for usage\n");
-          continue;
+          continue; 
         }
 
         if (kvs_read(num_pairs, keys, out_fd)) {
@@ -275,30 +284,92 @@ static void dispatch_threads(DIR* dir) {
   free(threads);
 }
 
+
+static void *manager_thread_handler(void *arguments){
+  t_manager_data *data = (t_manager_data *)arguments;
+  char request_fifo_name[40] = data->request_fifo_name;
+  char response_fifo_name[40] = data->response_fifo_name;
+  char notification_fifo_name[40] = data->notification_fifo_name;
+  char buffer[3];
+  // Opens the request fifo
+  int fd_request;
+  fd_request = open(request_fifo_name, O_RDONLY);
+
+  if(fd_request == -1) {
+    write_str(STDERR_FILENO, "open failed");
+  }
+  // Opens the response fifo
+  int fd_response;
+  fd_response = open(response_fifo_name, O_WRONLY);
+
+
+  // process the commands sent by the client in the request fifo
+  int opcode;
+  switch (opcode){
+   case OP_CODE_CONNECT:
+      if(result_connect == 1){
+        strcpy(buffer, "11");
+        write(fd_response, buffer, strlen(buffer));
+      }
+      strcpy(buffer, "10");
+      write(fd_response, buffer, strlen(buffer));
+    case OP_CODE_DISCONNECT:
+      //deletes every subscription key in the server
+
+      close(fd_request);
+      close(fd_response);
+      //close(fd_notification)
+    case OP_CODE_SUBSCRIBE:
+      // inserts in the linked list of subscriptions the fifo path of the client in the determinied key
+      strcpy(buffer, "30");
+      write(fd_response, buffer, strlen(buffer));
+    case OP_CODE_UNSUBSCRIBE:
+    // removes from the linked list of subscriptions the fifo path of the client in the determinied key
+      break;
+  }
+
+
+}
+
 static void* manages_register_fifo(void *register_fifo_path){
 
+  
   char *regist_fifo_path = (char*) register_fifo_path;
-  char buffer[41];
+  char buffer[121];
+  char opcode;
+  char request_fifo_name[40];
+  char response_fifo_name[40];
+  char notification_fifo_name[40];
+  t_manager_data thread_data = {request_fifo_name, response_fifo_name, notification_fifo_name};
   pthread_t* manager_thread;
   int ret;
 
   // Opens register fifo for reading
   fd_register = open(regist_fifo_path, O_RDONLY);
 
+
   if(fd_register == -1) {
+    result_connect = 1;
     write_str(STDERR_FILENO, "open failed");
+    result_connect = 1;
   }
 
   while(1){
 
-    if(fd_register == -1) {
-      write_str(STDERR_FILENO, "open failed");
-    }
-
     ret = read(fd_register, buffer, sizeof(buffer));
-    if(ret == 0){
-//      pthread_create(manager_thread, NULL, manager_thread_handler, void(*))
+    // extracts each part of the mensage sent from the register fifo
+    opcode = buffer[0];
+    strncpy(request_fifo_name, buffer +1, 40);
+    strncpy(response_fifo_name, buffer + 41, 40);
+    strncpy(notification_fifo_name, buffer + 81, 40);
+    if(ret != 0) {
+      result_connect = 1;
+      write_str(STDERR_FILENO, "read failed");
     }
+    if(pthread_create(manager_thread, NULL, manager_thread_handler, (void*)&thread_data)!=0) {
+      write_str(STDERR_FILENO, "create failed");
+    }
+    
     printf("%s buffer:",buffer);
 
   }
@@ -372,7 +443,9 @@ int main(int argc, char** argv) {
 
 
   //Create host thread
-  pthread_create(host_thread, NULL, manages_register_fifo, NULL);
+  if(pthread_create(host_thread, NULL, manages_register_fifo, (void *) register_fifo_path)!=0 ){
+    write_str(stderr, "pthread_create failed\n");
+  }
 
   dispatch_threads(dir);
 

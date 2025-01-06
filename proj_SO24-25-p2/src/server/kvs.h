@@ -4,13 +4,13 @@
 
 #include <stddef.h>
 #include <pthread.h>
-#include "client_linked_list.h"
+#include "subscriber_linked_list.h"
 
 typedef struct KeyNode {
     char *key;
     char *value;
     struct KeyNode *next;
-    t_ClientListNode *head;
+    t_SubscriberListNode *head;
 } KeyNode;
 
 typedef struct HashTable {
