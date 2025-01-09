@@ -13,10 +13,14 @@
 
 static void* notifications_handler(void *fd_notification){
   int* fd_notif = (int*) fd_notification;
+  int intr = 0;
   char buffer[MAX_STRING_SIZE];
   while (1){
-    read(fd_notif, buffer, MAX_STRING_SIZE);
-    write(STDOUT_FILENO, buffer, MAX_STRING_SIZE);
+    if(read_all(fd_notif, buffer, MAX_STRING_SIZE, &intr) == -1){
+    perror("read failed");
+    }
+    if(write_all(STDOUT_FILENO, buffer, MAX_STRING_SIZE)==-1)
+      perror("write failed");
   }
   pthread_exit(NULL);
 }

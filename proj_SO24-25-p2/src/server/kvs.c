@@ -54,6 +54,47 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     return 0;
 }
 
+int write_subscription(HashTable *ht, const char *key, const char *subs_notif_fifo) {
+    int index = hash(key);
+
+    // Search for the key node
+	KeyNode *keyNode = ht->table[index];
+    KeyNode *previousNode;
+
+    while (keyNode != NULL) {
+        if (strcmp(keyNode->key, key) == 0) {
+            // insert client notification path into the subscriber linked list 
+            append_list_node(keyNode->head, subs_notif_fifo);
+            return 1;
+        }
+        previousNode = keyNode;
+        keyNode = previousNode->next; // Move to the next node
+    }
+    // Key not found, error
+    return 0;
+}
+
+
+int delete_subscription(HashTable *ht, const char *key, const char *subs_notif_fifo) {
+    int index = hash(key);
+
+    // Search for the key node
+    KeyNode *keyNode = ht->table[index];
+
+    while (keyNode != NULL) {
+        if (strcmp(keyNode->key, key) == 0) {
+            // Key found; delete the subscription node
+            delete_list_node(keyNode->head, subs_notif_fifo);
+            return 1; // Successfully deleted the subscription
+        }
+        keyNode = keyNode->next; // Move to the next node
+    }
+
+    return 0; // Key not found
+}
+
+
+
 char* read_pair(HashTable *ht, const char *key) {
     int index = hash(key);
 

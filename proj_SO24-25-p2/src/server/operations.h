@@ -17,7 +17,7 @@ int kvs_terminate();
 /// @param keys Array of keys' strings.
 /// @param values Array of values' strings.
 /// @return 0 if the pairs were written successfully, 1 otherwise.
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE]);
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], char notifcation_fifo_name[40]);
 
 /// Reads values from the KVS.
 /// @param num_pairs Number of pairs to read.
@@ -35,6 +35,18 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd);
 /// Writes the state of the KVS.
 /// @param fd File descriptor to write the output.
 void kvs_show(int fd);
+
+/// Inserts into the subscription linked list associated with key the notification fifo name corresponding to the client
+/// @param key Key to search for the correspondent subscription linked list
+/// @param notification_fifo_name Notification fifo name associated with client
+/// @return 0 if the key didn't exist in the hastable, 1 otherwise
+int kvs_subscribe(char *key, char *notification_fifo_name);
+
+/// Delete from the subscription linked list associated with key the notification fifo name corresponding to the client
+/// @param key Key to search for the correspondent subscription linked list
+/// @param notification_fifo_name Notification fifo name associated with client
+/// @return 0 if the subscription existed and was deleted, 1 if didn't exist
+int kvs_unsubscribe(char *key, char *notification_fifo_name);
 
 /// Creates a backup of the KVS state and stores it in the correspondent
 /// backup file

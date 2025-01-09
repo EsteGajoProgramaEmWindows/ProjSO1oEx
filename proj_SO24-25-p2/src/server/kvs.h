@@ -43,7 +43,22 @@ char* read_pair(HashTable *ht, const char *key);
 /// @return 0 if the node was deleted successfully, 1 otherwise.
 int delete_pair(HashTable *ht, const char *key);
 
-/// Frees the hashtable.
+/// Writes into the subscription linked list the notification fifo name associated with the client
+/// that subscribed the key
+/// @param ht Hash table to write
+/// @param key Key of the subscription
+/// @param subs_notif_fifo Name of the notification fifo associated with the client
+/// @return 0 if the key doesn't exist in the subscriber list, 1 otherwise
+int write_subscription(HashTable *ht, const char *key, const char *subs_notif_fifo);
+
+/// Deletes the subscription for a given key from the subscriber linked list
+/// @param ht Hash table to delete
+/// @param key Key of the subscription 
+/// @param subs_notif_fifo Name of the notification fifo associated with the client
+/// @return 0 if the subscription existed and was deleted successfully, 1 if the subscription didn't existed
+int delete_subscription(HashTable *ht, const char *key, const char *subs_notif_fifo);
+
+/// Frees the hashtable. 
 /// @param ht Hash table to be deleted.
 void free_table(HashTable *ht);
 

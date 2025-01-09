@@ -10,10 +10,13 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "protocol.h"
+#include "keys_linked_list.h"
+#include "queue.h"
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
+#include "kvs.h"
+#include "src/common/protocol.h"
 #include "io.h"
 #include "pthread.h"
 
@@ -24,20 +27,25 @@ struct SharedData {
   pthread_mutex_t directory_mutex;
 };
 
-typedef struct ManagerData{
-  char response_fifo_name[40];
+typedef struct fifos_client{
   char request_fifo_name[40];
+  char response_fifo_name[40];
   char notification_fifo_name[40];
-} t_manager_data;
+}t_fifos_client;
+
+typedef struct HostData{
+  char *register_fifo_path;
+  t_queue *queue;
+}t_hostData;
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
-int result_connect;
-int result_disconnect;
+int result_connect = 0; // variable used to indicate sucessful connection
+int result_disconnect = 0; // variable used to indicate sucessful disconnect
 
 size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
-size_t max_threads;            // Maximum allowed simultaneous threads
+size_t max_threads;            // Maximum allowed simultaneous threads    
 char* jobs_directory = NULL;
 char* register_fifo_path = NULL;
 int fd_register;
@@ -87,7 +95,7 @@ static int run_job(int in_fd, int out_fd, char* filename) {
           continue;
         }
 
-        if (kvs_write(num_pairs, keys, values)) {
+        if (kvs_write(num_pairs, keys, values) != num_pairs) {
           write_str(STDERR_FILENO, "Failed to write pair\n");
         }
         break;
@@ -179,7 +187,7 @@ static int run_job(int in_fd, int out_fd, char* filename) {
 }
 
 //frees arguments
-static void* get_file(void* arguments) {
+static void* get_file(void* arguments, void *data) {
   struct SharedData* thread_data = (struct SharedData*) arguments;
   DIR* dir = thread_data->dir;
   char* dir_name = thread_data->dir_name;
@@ -286,62 +294,132 @@ static void dispatch_threads(DIR* dir) {
 
 
 static void *manager_thread_handler(void *arguments){
-  t_manager_data *data = (t_manager_data *)arguments;
-  char request_fifo_name[40] = data->request_fifo_name;
-  char response_fifo_name[40] = data->response_fifo_name;
-  char notification_fifo_name[40] = data->notification_fifo_name;
+
+  // pointer to an linked list that will be used to store the index of the hash table associated 
+  // to the keys subscribed by which client
+  t_KeyListNode *key_list;
+  t_queue *queue = (t_queue *)arguments;
   char buffer[3];
-  // Opens the request fifo
-  int fd_request;
-  fd_request = open(request_fifo_name, O_RDONLY);
+  
 
-  if(fd_request == -1) {
-    write_str(STDERR_FILENO, "open failed");
-  }
-  // Opens the response fifo
-  int fd_response;
-  fd_response = open(response_fifo_name, O_WRONLY);
+  while(1){
+    t_fifos_client *name_fifos = pop(queue);
+    if(name_fifos == NULL){
+      continue;
+    }
+    
+    // Opens the request fifo
+    int fd_request;
+    fd_request = open(name_fifos->request_fifo_name, O_RDONLY);
 
+   if(fd_request == -1) {
+      write_str(STDERR_FILENO, "open failed");
+    }
+    // Opens the response fifo
+    int fd_response;
+    fd_response = open(name_fifos->response_fifo_name, O_WRONLY);
+    if(fd_request == -1) {
+      write_str(STDERR_FILENO, "open failed");
+    }
 
-  // process the commands sent by the client in the request fifo
-  int opcode;
-  switch (opcode){
-   case OP_CODE_CONNECT:
-      if(result_connect == 1){
-        strcpy(buffer, "11");
-        write(fd_response, buffer, strlen(buffer));
+    while(1){
+      // process the commands sent by the client in the request fifo
+      int opcode;
+      char read_buffer[42];
+      char key[41];
+      strncpy(key, buffer +1, 41);
+      if(read_all(fd_response, read_buffer, sizeof(read_buffer))==-1){
+        write_str(STDERR_FILENO, "read failed");
       }
-      strcpy(buffer, "10");
-      write(fd_response, buffer, strlen(buffer));
-    case OP_CODE_DISCONNECT:
-      //deletes every subscription key in the server
+      opcode = read_buffer[0];
+      switch (opcode){
+        case OP_CODE_CONNECT:
+          if(result_connect == 1){
+            strcpy(buffer, "11");
+          if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+            perror("write failed");
+          }
+          strcpy(buffer, "10");
+          if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+            perror("write failed");
+          }
 
-      close(fd_request);
-      close(fd_response);
-      //close(fd_notification)
-    case OP_CODE_SUBSCRIBE:
-      // inserts in the linked list of subscriptions the fifo path of the client in the determinied key
-      strcpy(buffer, "30");
-      write(fd_response, buffer, strlen(buffer));
-    case OP_CODE_UNSUBSCRIBE:
-    // removes from the linked list of subscriptions the fifo path of the client in the determinied key
-      break;
+        case OP_CODE_DISCONNECT:
+          //deletes every subscription key in the server
+          while(key_list!=NULL) {
+            kvs_unsubscribe(key_list->key, name_fifos->notification_fifo_name);
+            key_list = key_list->next;
+          }
+          
+          if(result_disconnect == 1) {
+            strcpy(buffer, "21");
+            if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+              perror("write failed");
+            }
+          }
+          else{
+            strcpy(buffer, "20");
+            if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+              perror("write failed");
+            }
+          }
+          close(fd_request);
+          close(fd_response);
+
+        case OP_CODE_SUBSCRIBE:
+          // insertes in the keys linked list of the client the key that was subscribed
+          append_list_node_key(key_list, key);
+          // inserts in the linked list of subscriptions the fifo path of the client in the determinied key
+          if(kvs_subscribe(key, name_fifos->notification_fifo_name) == 0){
+            strcpy(buffer, "30");
+            if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+              perror("write failed");
+            }
+          }
+          strcpy(buffer, "31");
+          if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+            perror("write failed");
+          }
+        case OP_CODE_UNSUBSCRIBE:
+          // removes from the keys linked list of the client the key that was unsubscribed
+          delete_list_node_key(key_list, key);
+          // removes from the linked list of subscriptions the fifo path of the client in the determinied key
+            if(kvs_unsubscribe(key, name_fifos->notification_fifo_name) == 0){
+              strcpy(buffer, "40");
+              if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+                perror("write failed");
+              }
+            }
+            else{
+              strcpy(buffer, "41");
+              if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
+                perror("write failed");
+              }
+            }
+          break;
+        }
+      }
+
+    }
+
   }
 
+  pthread_exit(NULL);
 
 }
 
-static void* manages_register_fifo(void *register_fifo_path){
+static void* manages_register_fifo(void *arguments){
 
+  t_hostData * host_data = (t_hostData*)arguments;
   
-  char *regist_fifo_path = (char*) register_fifo_path;
+  char *regist_fifo_path = host_data->register_fifo_path;
+  t_queue *queue = host_data->queue;
   char buffer[121];
   char opcode;
+  int intr = 0;
   char request_fifo_name[40];
   char response_fifo_name[40];
   char notification_fifo_name[40];
-  t_manager_data thread_data = {request_fifo_name, response_fifo_name, notification_fifo_name};
-  pthread_t* manager_thread;
   int ret;
 
   // Opens register fifo for reading
@@ -356,20 +434,18 @@ static void* manages_register_fifo(void *register_fifo_path){
 
   while(1){
 
-    ret = read(fd_register, buffer, sizeof(buffer));
+    if(read_all(fd_register, buffer, sizeof(buffer), &intr) == -1){
+      perror("read failed");
+      result_connect = 1;
+    }
+    
     // extracts each part of the mensage sent from the register fifo
     opcode = buffer[0];
     strncpy(request_fifo_name, buffer +1, 40);
     strncpy(response_fifo_name, buffer + 41, 40);
     strncpy(notification_fifo_name, buffer + 81, 40);
-    if(ret != 0) {
-      result_connect = 1;
-      write_str(STDERR_FILENO, "read failed");
-    }
-    if(pthread_create(manager_thread, NULL, manager_thread_handler, (void*)&thread_data)!=0) {
-      write_str(STDERR_FILENO, "create failed");
-    }
-    
+    enqueue(queue,request_fifo_name, response_fifo_name, notification_fifo_name);
+
     printf("%s buffer:",buffer);
 
   }
@@ -390,7 +466,11 @@ int main(int argc, char** argv) {
 
   // Create the variable that holds the id of the host thread
   pthread_t* host_thread = malloc(sizeof(pthread_t));
+  pthread_t* manager_thread = (pthread_t*) malloc(sizeof(pthread_t) *(MAX_MANAGER_THREADS));
+  t_queue* manager_queue;
+  manager_queue = create_queue();
   jobs_directory = argv[1];
+  
 
   char* endptr;
   max_backups = strtoul(argv[3], &endptr, 10);
@@ -441,10 +521,29 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  t_hostData *host_data = (t_hostData *)malloc(sizeof(t_hostData));
+  host_data->queue = manager_queue;
+  host_data->register_fifo_path = register_fifo_path;
+
 
   //Create host thread
-  if(pthread_create(host_thread, NULL, manages_register_fifo, (void *) register_fifo_path)!=0 ){
+  if(pthread_create(host_thread, NULL, manages_register_fifo, (void *)host_data)!=0 ){
     write_str(stderr, "pthread_create failed\n");
+    result_connect = 1;
+  }
+
+ //static void dispatch_manager_thread()
+ for (int i = 0; i < MAX_MANAGER_THREADS; i++){
+    if(pthread_create(&manager_thread[i], NULL, manager_thread_handler,(void*)&manager_queue) == 0){
+      }
+    else{
+      fprintf(stderr, "Failed to create thread.\n");
+      exit(1);
+      }
+    }
+  
+  for(int i = 0; i < max_threads; i++){
+    pthread_join(manager_thread[i], NULL);
   }
 
   dispatch_threads(dir);

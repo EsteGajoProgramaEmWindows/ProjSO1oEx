@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "src/common/io.h"
 #include "constants.h"
 #include "io.h"
 #include "kvs.h"
@@ -48,7 +49,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
     fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
-
+  char buffer;
   pthread_rwlock_wrlock(&kvs_table->tablelock);
 
   for (size_t i = 0; i < num_pairs; i++) {
@@ -56,6 +57,9 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
       fprintf(stderr, "Failed to write key pair (%s,%s)\n", keys[i], values[i]);
     }
     // abre o fifo de notifications cada um dos clientes que subscreveram essa chave e envia a notificação
+    int fd_notification = open(notification_fifo_name, O_WRONLY);
+      //write_all();
+    
   }
 
   pthread_rwlock_unlock(&kvs_table->tablelock);
@@ -138,6 +142,20 @@ void kvs_show(int fd) {
   pthread_rwlock_unlock(&kvs_table->tablelock);
 }
 
+int kvs_subscribe(char *key, char *notification_fifo_name){
+  if(write_subscription(kvs_table, key, notification_fifo_name) == 0){
+    return 0;
+  }
+  return 1;
+  
+}
+
+int kvs_unsubscribe(char *key, char *notification_fifo_name){
+  if(delete_subscription(kvs_table, key, notification_fifo_name) == 0) {
+    return 0;
+  }
+  return 1; 
+}
 int kvs_backup(size_t num_backup, char *job_filename, char *directory) {
   pid_t pid;
   char bck_name[50];
