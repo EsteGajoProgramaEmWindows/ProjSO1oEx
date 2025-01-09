@@ -441,13 +441,14 @@ static void* manages_register_fifo(void *arguments){
     
     // extracts each part of the mensage sent from the register fifo
     opcode = buffer[0];
-    strncpy(request_fifo_name, buffer +1, 40);
-    strncpy(response_fifo_name, buffer + 41, 40);
-    strncpy(notification_fifo_name, buffer + 81, 40);
-    enqueue(queue,request_fifo_name, response_fifo_name, notification_fifo_name);
+    if(opcode == OP_CODE_CONNECT){
+      strncpy(request_fifo_name, buffer +1, 40);
+      strncpy(response_fifo_name, buffer + 41, 40);
+      strncpy(notification_fifo_name, buffer + 81, 40);
+      enqueue(queue,request_fifo_name, response_fifo_name, notification_fifo_name);
 
-    printf("%s buffer:",buffer);
-
+      printf("%s buffer:",buffer);
+    }
   }
   pthread_exit(NULL);
 }

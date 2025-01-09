@@ -57,7 +57,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
       fprintf(stderr, "Failed to write key pair (%s,%s)\n", keys[i], values[i]);
     }
     // abre o fifo de notifications cada um dos clientes que subscreveram essa chave e envia a notificação
-    int fd_notification = open(notification_fifo_name, O_WRONLY);
+    //int fd_notification = open(notification_fifo_name, O_WRONLY);
       //write_all();
     
   }
