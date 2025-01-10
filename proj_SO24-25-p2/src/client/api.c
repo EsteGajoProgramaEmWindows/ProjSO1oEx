@@ -9,9 +9,9 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include "api.h"
-#include "src/common/constants.h"
-#include "src/common/protocol.h"
-#include "src/common/io.h"
+#include "../common/constants.h"
+#include "../common/protocol.h"
+#include "../common/io.h"
 
 int fd_response;
 int fd_request;

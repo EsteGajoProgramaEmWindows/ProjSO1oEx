@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "api.h": "c",
+        "constants.h": "c",
+        "io.h": "c"
+    }
+}

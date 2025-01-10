@@ -6,9 +6,9 @@
 #include <unistd.h>
 
 #include "parser.h"
-#include "src/client/api.h"
-#include "src/common/constants.h"
-#include "src/common/io.h"
+#include "../client/api.h"
+#include "../common/constants.h"
+#include "../common/io.h"
 
 
 static void* notifications_handler(void *fd_notification){

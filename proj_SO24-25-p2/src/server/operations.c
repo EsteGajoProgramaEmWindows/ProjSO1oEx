@@ -8,7 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "src/common/io.h"
+#include "../common/io.h"
 #include "constants.h"
 #include "io.h"
 #include "kvs.h"
@@ -49,7 +49,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE],
     fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
-  char buffer;
+  //char buffer;
   pthread_rwlock_wrlock(&kvs_table->tablelock);
 
   for (size_t i = 0; i < num_pairs; i++) {

@@ -16,7 +16,7 @@
 #include "parser.h"
 #include "operations.h"
 #include "kvs.h"
-#include "src/common/protocol.h"
+#include "../common/protocol.h"
 #include "io.h"
 #include "pthread.h"
 
