@@ -9,10 +9,11 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "keys_linked_list.h"
 #include "queue.h"
-#include "constants.h"
+#include "../common/constants.h"
 #include "parser.h"
 #include "operations.h"
 #include "kvs.h"
@@ -49,6 +50,32 @@ size_t max_threads;            // Maximum allowed simultaneous threads
 char* jobs_directory = NULL;
 char* register_fifo_path = NULL;
 int fd_register;
+
+void shutdown(int list_keys[]){
+  for(int i = 0; i < current_SESSION_COUNT; i++){
+    //unsubscribe and close fifo (list_keys[i]);
+    kvs_unsubscribe(list_keys[i].keys, list_keys[i].notification_fifo_name);
+    if(close(list_keys[i].fd) == -1){
+      perror("close failed");
+    }
+  }
+  exit(0);
+}
+
+static void handle_signals(int sig){
+  static int count = 0;
+  if(sig==SIGUSR1){
+    if (signal(SIGUSR1, handle_signals) == SIG_ERR) {
+      exit(EXIT_FAILURE);
+    }
+    fprintf(stderr,"SIGUSR1\n");
+    //encerra tudo e cenas
+    count++;
+    return;
+  }
+  fprintf(stderr,"SIGQUIT\n");
+  return;
+}
 
 int filter_job_files(const struct dirent* entry) {
     const char* dot = strrchr(entry->d_name, '.');
@@ -257,6 +284,11 @@ static void* get_file(void* arguments, void *data) {
 static void dispatch_threads(DIR* dir) {
   pthread_t* threads = malloc(max_threads * sizeof(pthread_t));
 
+  if(pthread_sigmask(SIG_BLOCK, SIGUSR1, NULL) != 0){
+    fprintf(stderr, "sigmask failed\n");
+    return;
+  }
+
   if (threads == NULL) {
     fprintf(stderr, "Failed to allocate memory for threads\n");
     return;
@@ -287,6 +319,11 @@ static void dispatch_threads(DIR* dir) {
 
   if (pthread_mutex_destroy(&thread_data.directory_mutex) != 0) {
     fprintf(stderr, "Failed to destroy directory_mutex\n");
+  }
+  
+  if(pthread_sigmask(SIG_UNBLOCK, SIGUSR1, NULL) != 0){
+    fprintf(stderr, "sigunmask failed\n");
+    return;
   }
 
   free(threads);
@@ -545,6 +582,11 @@ int main(int argc, char** argv) {
   
   for(int i = 0; i < max_threads; i++){
     pthread_join(manager_thread[i], NULL);
+  }
+
+  if(signal(SIGUSR1, handle_signals) == SIG_ERR){
+    write_str(STDERR_FILENO, "signal failed");
+    exit(EXIT_FAILURE);
   }
 
   dispatch_threads(dir);
