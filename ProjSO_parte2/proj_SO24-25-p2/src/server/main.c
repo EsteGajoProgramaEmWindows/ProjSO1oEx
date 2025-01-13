@@ -297,226 +297,145 @@ static void dispatch_threads(DIR* dir) {
 
 
 static void *manager_thread_handler(void *arguments){
-  printf("Manager thread %ld\n", pthread_self());
-  // pointer to an linked list that will be used to store the index of the hash table associated 
-  // to the keys subscribed by which client
-  t_KeyListNode *key_list;
-  t_queue *queue = (t_queue *)arguments;
-  char buffer[3];
-  int intr;
-
-  while(1){
-
-    sem_wait(&full); // decrement the semaphore of full itens
-    pthread_mutex_lock(&lock_queue); // lock the mutex
-    t_node_queue *name_fifos = pop(queue);
-    pthread_mutex_unlock(&lock_queue); // unlock the mutex
-    sem_post(&empty); // increment the semaphore for empty itens
-
-    if(name_fifos == NULL){
-      continue;
-    }
-    
-    // Opens the request fifo
-    int fd_request;
-    fd_request = open(name_fifos->request_fifo_name, O_RDONLY);
-    printf("CAMINNHO: %s\n", name_fifos->request_fifo_name);
-
-   if(fd_request == -1) {
-      char msg[128] = "";
-      sprintf(msg, "Failed to open request fifo: %s\n", name_fifos->request_fifo_name);
-      write_str(STDERR_FILENO, msg);
-      continue;
-    }
-    // Opens the response fifo
-    int fd_response;
-    fd_response = open(name_fifos->response_fifo_name, O_WRONLY);
-    if(fd_request == -1) {
-      char msg[128] = "";
-      sprintf(msg, "Failed to open response fifo: %s\n", name_fifos->response_fifo_name);
-      write_str(STDERR_FILENO, msg);
-      continue;
-    }
-
-    int fd_notification;
-    fd_notification = open(name_fifos->notification_fifo_name, O_WRONLY);
-    if(fd_notification == -1){
-      char msg[128] = "";
-      sprintf(msg, "Failed to open notification fifo: %s\n", name_fifos->notification_fifo_name);
-      write_str(STDERR_FILENO, msg);
-      continue;
-    }
-
-    if(result_connect == 1){
-      strcpy(buffer, "11");
-      if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-          write_str(STDERR_FILENO, "write failed");
-          continue;
-      }
-    }
-    strcpy(buffer, "10");
-    if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-      write_str(STDERR_FILENO, "write failed");
-      continue;
-    }
+    printf("Manager thread %ld\n", pthread_self());
+    t_queue *queue = (t_queue *)arguments;
+    char buffer[3];
+    int intr;
 
     while(1){
-      // process the commands sent by the client in the request fifo
-      int opcode;
-      char read_buffer[42];
-      char key[41];
+        sem_wait(&full); // Decrement the semaphore of full items
+        pthread_mutex_lock(&lock_queue); // Lock the mutex
+        t_node_queue *name_fifos = pop(queue);
+        pthread_mutex_unlock(&lock_queue); // Unlock the mutex
+        sem_post(&empty); // Increment the semaphore for empty items
 
-      strncpy(key, buffer +1, 41);
-      if(read_all(fd_request, read_buffer, sizeof(read_buffer), &intr)==-1){
-        write_str(STDERR_FILENO, "read failed");
-      }
-      if(opcode != 2 || opcode || 3 || opcode != 4){
-        write_str(STDERR_FILENO, "OPCODE: INVALID");
-      }
-      opcode = read_buffer[0];
-      switch (opcode){
-/*
-         case OP_CODE_CONNECT:
-          if(result_connect == 1){
-            strcpy(buffer, "11");
-          if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-            write_str(STDERR_FILENO, "write failed");
-          }
-          strcpy(buffer, "10");
-          if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-            write_str(STDERR_FILENO, "write failed");
-          }
+        if(name_fifos == NULL){
+            continue;
         }
-*/
-        case OP_CODE_DISCONNECT:
-          //deletes every subscription key in the server
-          while(key_list!=NULL) {
-            kvs_unsubscribe(key_list->key, fd_notification);
-            key_list = key_list->next;
-          }
-          
-          if(result_disconnect == 1) {
-            strcpy(buffer, "21");
-            if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-              write_str(STDERR_FILENO, "write failed");
-            }
-          }
-          else{
-            strcpy(buffer, "20");
-            if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-              write_str(STDERR_FILENO, "write failed");
-            }
-          }
+
+        printf("Popped FIFO paths: req=%s, resp=%s, notif=%s\n", name_fifos->request_fifo_name, name_fifos->response_fifo_name, name_fifos->notification_fifo_name);
+
+        int fd_request = open(name_fifos->request_fifo_name, O_RDONLY);
+        if(fd_request == -1) {
+            write_str(STDERR_FILENO, "Failed to open request fifo\n");
+            continue;
+        }
+
+        int fd_response = open(name_fifos->response_fifo_name, O_WRONLY);
+        if(fd_response == -1) {
+            write_str(STDERR_FILENO, "Failed to open response fifo\n");
+            close(fd_request);
+            continue;
+        }
+
+        int fd_notification = open(name_fifos->notification_fifo_name, O_WRONLY);
+        if(fd_notification == -1){
+            write_str(STDERR_FILENO, "Failed to open notification fifo\n");
             close(fd_request);
             close(fd_response);
-            close(fd_notification);
-            break;
-        case OP_CODE_SUBSCRIBE:
-          // insertes in the keys linked list of the client the key that was subscribed
-          append_list_node_key(key_list, key);
-          // inserts in the linked list of subscriptions the fifo path of the client in the determinied key
-          if(kvs_subscribe(key, fd_notification) == 0){
-            strcpy(buffer, "30");
-            if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-              write_str(STDERR_FILENO, "write failed");
-            }
-          }
-          strcpy(buffer, "31");
-          if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-            write_str(STDERR_FILENO, "write failed");
-          }
-          break;
-
-        case OP_CODE_UNSUBSCRIBE:
-          // removes from the keys linked list of the client the key that was unsubscribed
-          delete_list_node_key(key_list, key);
-          // removes from the linked list of subscriptions the fifo path of the client in the determinied key
-            if(kvs_unsubscribe(key, fd_notification) == 0){
-              strcpy(buffer, "40");
-              if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-                write_str(STDERR_FILENO, "write failed");
-              }
-            }
-            else{
-              strcpy(buffer, "41");
-              if(write_all(fd_response, buffer, strlen(buffer)) == -1) {
-                write_str(STDERR_FILENO, "write failed");
-              }
-            }
-          break;
+            continue;
         }
-      }
 
+        while(1){
+            char read_buffer[42];
+            if(read_all(fd_request, read_buffer, sizeof(read_buffer), &intr)==-1){
+                write_str(STDERR_FILENO, "read failed");
+                break;
+            }
+
+            int opcode = read_buffer[0];
+            printf("Received opcode: %d\n", opcode);
+
+            switch (opcode){
+                case 2: // OP_CODE_DISCONNECT
+                    printf("Handling OP_CODE_DISCONNECT\n");
+                    break;
+                case 3: // OP_CODE_SUBSCRIBE
+                    printf("Handling OP_CODE_SUBSCRIBE\n");
+                    break;
+                case 4: // OP_CODE_UNSUBSCRIBE
+                    printf("Handling OP_CODE_UNSUBSCRIBE\n");
+                    break;
+                default:
+                    write_str(STDERR_FILENO, "OPCODE: INVALID\n");
+                    break;
+            }
+        }
+
+        close(fd_request);
+        close(fd_response);
+        close(fd_notification);
     }
 
-  pthread_exit(NULL);
-
+    pthread_exit(NULL);
 }
 
 static void* manages_register_fifo(void *arguments){
 
-  printf("O MEU ID HOST %ld", pthread_self());
+    printf("O MEU ID HOST %ld", pthread_self());
 
-  t_hostData * host_data = (t_hostData*)arguments;
-  
-  char *fifo_path_register = host_data->register_fifo_path;
-  t_queue *queue = host_data->queue;
-  char buffer[121];
-  int opcode;
-  int intr = 0;
-  char request_fifo_name[41] = {0};
-  char response_fifo_name[41] = {0};
-  char notification_fifo_name[41] = {0};
+    t_hostData * host_data = (t_hostData*)arguments;
+    
+    char *fifo_path_register = host_data->register_fifo_path;
+    t_queue *queue = host_data->queue;
+    char buffer[121];
+    int opcode;
+    int intr = 0;
+    char request_fifo_name[41] = {0};
+    char response_fifo_name[41] = {0};
+    char notification_fifo_name[41] = {0};
 
-  // Opens register fifo for reading
-  fd_register = open(fifo_path_register, O_RDONLY);
+    // Opens register fifo for reading
+    fd_register = open(fifo_path_register, O_RDONLY);
 
-  if(fd_register == -1) {
-    result_connect = 1;
-    write_str(STDERR_FILENO, "open failed");
-    result_connect = 1;
-  }
-
-  while(1){
-    if(read_all(fd_register, buffer, sizeof(buffer), &intr) == -1){
-      write_str(STDERR_FILENO, "read failed");
-      result_connect = 1;
+    if(fd_register == -1) {
+        result_connect = 1;
+        write_str(STDERR_FILENO, "open failed");
+        result_connect = 1;
     }
-    // extracts each part of the mensage sent from the register fifo
-    opcode = buffer[0] - 48;
-    printf("opcode : %d\n", opcode);
-    if(opcode == OP_CODE_CONNECT){
 
-      memcpy(request_fifo_name, buffer +1 , 40);
-      for (int i = 0; i < 40; i++){
-        if(request_fifo_name[i] == 32){
-          request_fifo_name[i] = '\0';
+    while(1){
+        if(read_all(fd_register, buffer, sizeof(buffer), &intr) == -1){
+            write_str(STDERR_FILENO, "read failed");
+            result_connect = 1;
         }
-      }
-      memcpy(response_fifo_name, buffer + 41, 40);
-      for(int i = 0; i < 40; i++){
-        if(response_fifo_name[i] == 32){
-          response_fifo_name[i] = '\0';
-        }
-      }
+        // extracts each part of the message sent from the register fifo
+        opcode = buffer[0] - '0';  // Changed to '0' for ASCII conversion
+        printf("opcode : %d\n", opcode);
+        if(opcode == OP_CODE_CONNECT){
 
-      memcpy(notification_fifo_name, buffer + 81, 40);
-      for(int i = 0; i < 40; i++){
-        if(notification_fifo_name[i] == 32){
-          notification_fifo_name[i] = '\0';
-        }
-      }
+            memcpy(request_fifo_name, buffer +1 , 40);
+            for (int i = 0; i < 40; i++){
+                if(request_fifo_name[i] == ' '){
+                    request_fifo_name[i] = '\0';
+                }
+            }
+            memcpy(response_fifo_name, buffer + 41, 40);
+            for(int i = 0; i < 40; i++){
+                if(response_fifo_name[i] == ' '){
+                    response_fifo_name[i] = '\0';
+                }
+            }
 
-      sem_wait(&empty); // Decrement the semaphore of empty items
-      pthread_mutex_lock(&lock_queue); // locks the mutex 
-      enqueue(queue,request_fifo_name, response_fifo_name, notification_fifo_name);
-      pthread_mutex_unlock(&lock_queue); // unlocks the mutex
-      sem_post(&full); // Increment the semaphore of full items
+            memcpy(notification_fifo_name, buffer + 81, 40);
+            for(int i = 0; i < 40; i++){
+                if(notification_fifo_name[i] == ' '){
+                    notification_fifo_name[i] = '\0';
+                }
+            }
+
+            sem_wait(&empty); // Decrement the semaphore of empty items
+            pthread_mutex_lock(&lock_queue); // locks the mutex 
+            enqueue(queue,request_fifo_name, response_fifo_name, notification_fifo_name);
+            pthread_mutex_unlock(&lock_queue); // unlocks the mutex
+            sem_post(&full); // Increment the semaphore of full items
+        } else {
+            write_str(STDERR_FILENO, "OPCODE 1: INVALID\n");
+            printf("Invalid opcode: %d, buffer: %s\n", opcode, buffer); // Added debugging info
+        }
     }
-    write_str(STDERR_FILENO, "OPCODE 1: INVALID\n");
-  }
-  
-  pthread_exit(NULL);
+    
+    pthread_exit(NULL);
 }
 
 

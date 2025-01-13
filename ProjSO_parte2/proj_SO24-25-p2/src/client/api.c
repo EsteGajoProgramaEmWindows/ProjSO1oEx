@@ -20,27 +20,22 @@ int fd_notification;
 int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char const* server_pipe_path,
                 char const* notif_pipe_path, int* notif_pipe) {
 
-    // create pipes and connect
-
     int fd_register;
     char buffer[122] = {0};
     int intr = 0;
     char buffer_response[3];
     char message[MAX_STRING_SIZE];
 
-    // creates and opens request pipe for writing
     if (mkfifo(req_pipe_path, 0640) != 0) {
         perror("Error creating request pipe");
         return 1;
     }
 
-    // creates and opens response pipe for reading
     if (mkfifo(resp_pipe_path, 0640) != 0) {
         perror("Error creating response pipe");
         return 1;
     }
 
-    // creates and opens notification pipe for writing
     if (mkfifo(notif_pipe_path, 0640) != 0) {
         perror("Error creating notification pipe");
         return 1;
