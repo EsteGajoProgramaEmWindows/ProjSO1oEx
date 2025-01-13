@@ -418,11 +418,10 @@ static void* manages_register_fifo(void *arguments){
       }
       memcpy(response_fifo_name, buffer + 41, 40);
       for(int i = 0; i < 40; i++){
-        if(response_fifo_name[i] == 32){
+        if (response_fifo_name[i] == 32){
           response_fifo_name[i] = '\0';
         }
       }
-      printf("ENTREI AQUI\n");
       memcpy(notification_fifo_name, buffer + 81, 40);
       for(int i = 0; i < 40; i++){
         if(notification_fifo_name[i] == 32){
@@ -437,7 +436,7 @@ static void* manages_register_fifo(void *arguments){
       sem_post(&full); // Increment the semaphore of full items
     }
     else{
-      write_str(STDERR_FILENO, "OPCODE 1: INVALID\n");
+      write_str(STDERR_FILENO, "OPCODE INVALID\n");
     }
   }
   
@@ -520,25 +519,6 @@ int main(int argc, char** argv) {
   host_data->register_fifo_path = register_fifo_path;
 
   // Create host thread
-  if(pthread_create(host_thread, NULL, manages_register_fifo, (void *)host_data)!=0 ){
-    write_str(STDERR_FILENO, "pthread_create failed\n");
-    result_connect = 1;
-  }
-
-  printf("Thread MAIN %ld\n", pthread_self());
-  dispatch_threads(dir);
-
-  if (closedir(dir) == -1) {
-    fprintf(stderr, "Failed to close directory\n");
-    return 0;
-  }
-
-  while (active_backups > 0) {
-    wait(NULL);
-    active_backups--;
-  }
-
-  // Create manager threads
  for (int i = 0; i < MAX_SESSION_COUNT; i++){
     if(pthread_create(&manager_thread[i], NULL, manager_thread_handler,(void*)manager_queue) == 0){
       }
