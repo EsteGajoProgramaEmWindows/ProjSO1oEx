@@ -539,5 +539,7 @@ int main(int argc, char** argv) {
   free(host_thread);
   kvs_terminate();
 
+  free(host_thread);
+  free(manager_thread);
   return 0;
 }
