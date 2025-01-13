@@ -13,12 +13,6 @@
 #include "src/common/protocol.h"
 #include "src/common/io.h"
 
-int fd_response;
-int fd_request;
-int fd_notification; 
-
-
-
 int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char const* server_pipe_path,
                 char const* notif_pipe_path, int* notif_pipe) {
 

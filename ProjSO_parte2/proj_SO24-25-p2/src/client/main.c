@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+#include <signal.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -5,20 +7,64 @@
 #include <string.h>
 #include <unistd.h>
 
+
+#include "api.h"
 #include "parser.h"
-#include "src/client/api.h"
 #include "src/common/constants.h"
 #include "src/common/io.h"
 
 
-static void* notifications_handler(void *fd_notification){
-  int fd_notif = *(int*) fd_notification;
+pthread_t main_thread;
+char req_pipe_path[256] = "/tmp/req";
+char resp_pipe_path[256] = "/tmp/resp";
+char notif_pipe_path[256] = "/tmp/notif";
+pthread_t* notif_thread;
+
+static void sigint_handler(int signum){
+  if(kvs_disconnect() != 0) {
+    fprintf(stderr, "Failed to disconnect to the server\n");
+  }
+  // TODO: end notifications thread
+  pthread_join(*notif_thread, NULL);
+  free(notif_thread);
+        
+  if(unlink(req_pipe_path) != 0) {
+    perror("Error removing request pipe");
+  }
+  if(unlink(resp_pipe_path)!= 0) {
+    perror("Error removing response pipe");
+  }
+  if(unlink(notif_pipe_path)!= 0) {
+    perror("Error removing notification pipe");
+  }
+  printf("Disconnected from server\n");
+
+}
+
+
+static void sig_pipe_handler(int signum){
+  printf("Received SIGPIPE : Fifos closed by server\n");
+  close(fd_notification);
+  close(fd_request);
+  close(fd_response);
+  exit(1);
+}
+
+
+static void* notifications_handler(void *fd_notif){
+  int fd_notify = *(int*) fd_notif;
   int intr = 0;
   char buffer[MAX_STRING_SIZE];
   while (1){
-    if(read_all(fd_notif, buffer, MAX_STRING_SIZE, &intr) == -1){
+    int result = read_all(fd_notify, buffer, MAX_STRING_SIZE, &intr);
+    if(result == -1){
     perror("read failed");
     }
+    if(result == 0){
+      pthread_kill(main_thread, SIGPIPE);
+      break;
+    }
+
     if(write_all(STDOUT_FILENO, buffer, MAX_STRING_SIZE)==-1)
       perror("write failed");
   }
@@ -27,17 +73,31 @@ static void* notifications_handler(void *fd_notification){
 
 
 int main(int argc, char* argv[]) {
+  struct sigaction sa;
+  sa.sa_handler = sigint_handler; // arm the sig_int 
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART;
+  if(sigaction(SIGINT, &sa, NULL) == -1){
+    perror("sigaction failed");
+    return 1;
+  }
+  sa.sa_handler = sig_pipe_handler; // arm the sig_pipe
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART;
 
-  pthread_t* notif_thread = (pthread_t*)malloc(sizeof(pthread_t));
+  if(sigaction(SIGPIPE, &sa, NULL) == -1){
+    perror("sigaction failed");
+    return 1;
+  }
+
+  main_thread = pthread_self();
+  notif_thread = (pthread_t*)malloc(sizeof(pthread_t));
 
   if (argc < 3) {
     fprintf(stderr, "Usage: %s <client_unique_id> <register_pipe_path>\n", argv[0]);
     return 1;
   }
 
-  char req_pipe_path[256] = "/tmp/req";
-  char resp_pipe_path[256] = "/tmp/resp";
-  char notif_pipe_path[256] = "/tmp/notif";
 
   char keys[MAX_NUMBER_SUB][MAX_STRING_SIZE] = {0};
   unsigned int delay_ms;

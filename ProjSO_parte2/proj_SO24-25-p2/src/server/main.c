@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <signal.h>
 
 #include "keys_linked_list.h"
 #include "queue.h"

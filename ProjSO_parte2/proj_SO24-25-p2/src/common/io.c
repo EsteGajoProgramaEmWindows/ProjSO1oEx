@@ -17,6 +17,9 @@ int read_all(int fd, void *buffer, size_t size, int *intr) {
   size_t bytes_read = 0;
   while (bytes_read < size) {
     ssize_t result = read(fd, buffer + bytes_read, size - bytes_read);
+    if(result == 0){ 
+      return 0; // fifo is closed from the writer side
+    }
     if (result == -1) {
       if (errno == EINTR) {
         if (intr != NULL) {
