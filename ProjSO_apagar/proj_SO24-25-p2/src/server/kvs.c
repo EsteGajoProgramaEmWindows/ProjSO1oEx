@@ -1,7 +1,7 @@
 #include "kvs.h"
 #include "string.h"
 #include <ctype.h>
-#include "src/common/io.h"
+#include "../common/io.h"
 #include "keys_linked_list.h"
 #include "io.h"
 #include <stdlib.h>

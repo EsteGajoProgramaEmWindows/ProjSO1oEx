@@ -4,26 +4,25 @@
 #include "constants.h"
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
-typedef struct node_queue{
+typedef struct node_queue {
     char response_fifo_name[40];
     char request_fifo_name[40];
     char notification_fifo_name[40];
-    struct node_queue * next;
-}t_node_queue;
+    struct node_queue *next;
+} t_node_queue;
 
-typedef struct queue{
+typedef struct queue {
     struct node_queue *head;
     struct node_queue *tail;
-}t_queue;
+    pthread_mutex_t lock;  // Add mutex for thread safety
+} t_queue;
 
 t_queue* create_queue();
-
 int isEmpty(t_queue* queue);
-
-void enqueue(t_queue* queue,  char* response_fifo,  char* request_fifo,  char* notification_fifo);
+void enqueue(t_queue* queue, char* response_fifo, char* request_fifo, char* notification_fifo);
 t_node_queue* pop(t_queue* queue);
-
 void destroy_queue(t_queue *queue);
 
-#endif 
+#endif

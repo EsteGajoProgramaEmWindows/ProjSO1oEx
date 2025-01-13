@@ -18,9 +18,9 @@
 #include "operations.h"
 #include "subscriber_linked_list.h"
 #include "kvs.h"
-#include "src/common/constants.h"
-#include "src/common/io.h"
-#include "src/common/protocol.h"
+#include "../common/constants.h"
+#include "../common/io.h"
+#include "../common/protocol.h"
 #include "io.h"
 
 
