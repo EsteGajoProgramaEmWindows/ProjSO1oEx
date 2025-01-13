@@ -19,11 +19,10 @@
 #include "operations.h"
 #include "subscriber_linked_list.h"
 #include "kvs.h"
-#include "src/common/constants.h"
-#include "src/common/io.h"
-#include "src/common/protocol.h"
+#include "../common/constants.h"
+#include "../common/io.h"
+#include "../common/protocol.h"
 #include "io.h"
-
 
 struct SharedData {
   DIR* dir;
@@ -31,18 +30,18 @@ struct SharedData {
   pthread_mutex_t directory_mutex;
 };
 
-typedef struct HostData{
+typedef struct HostData {
   char *register_fifo_path;
   t_queue *queue;
-}t_hostData;
+} t_hostData;
 
 sem_t empty; // semaphore for empty queue
 sem_t full;  // semaphore for full queue
 pthread_mutex_t lock_queue = PTHREAD_MUTEX_INITIALIZER; // mutex to protect the queue
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t n_current_backups_lock = PTHREAD_MUTEX_INITIALIZER;
-int result_connect = 0;     // variable used to indicate sucessful connection
-int result_disconnect = 0;  // variable used to indicate sucessful disconnect
+int result_connect = 0;     // variable used to indicate successful connection
+int result_disconnect = 0;  // variable used to indicate successful disconnect
 
 size_t active_backups = 0;     // Number of active backups
 size_t max_backups;            // Maximum allowed simultaneous backups
@@ -255,7 +254,6 @@ static void* get_file(void* arguments) {
   pthread_exit(NULL);
 }
 
-
 static void dispatch_threads(DIR* dir) {
   pthread_t* threads = malloc(max_threads * sizeof(pthread_t));
 
@@ -265,7 +263,6 @@ static void dispatch_threads(DIR* dir) {
   }
 
   struct SharedData thread_data = {dir, jobs_directory, PTHREAD_MUTEX_INITIALIZER};
-
 
   for (size_t i = 0; i < max_threads; i++) {
     printf("CREIE THREAD %ld\n", pthread_self());
@@ -294,7 +291,6 @@ static void dispatch_threads(DIR* dir) {
 
   free(threads);
 }
-
 
 static void *manager_thread_handler(void *arguments) {
     printf("Manager thread %ld\n", pthread_self());
@@ -448,14 +444,13 @@ static void* manages_register_fifo(void *arguments){
   pthread_exit(NULL);
 }
 
-
 int main(int argc, char** argv) {
   if (argc < 5) {
     write_str(STDERR_FILENO, "Usage: ");
     write_str(STDERR_FILENO, argv[0]);
     write_str(STDERR_FILENO, " <jobs_dir>");
-		write_str(STDERR_FILENO, " <max_threads>");
-		write_str(STDERR_FILENO, " <max_backups>");
+    write_str(STDERR_FILENO, " <max_threads>");
+    write_str(STDERR_FILENO, " <max_backups>");
     write_str(STDERR_FILENO, " <resgister_fifo_path> \n");
     return 1;
   }
@@ -470,7 +465,6 @@ int main(int argc, char** argv) {
   jobs_directory = argv[1];
   sem_init(&empty, 0, MAX_SESSION_COUNT); // initialize the semaphore of empty items with the max of clients in simultaneous in the same session
   sem_init(&full, 0, 0); // initialize the semaphore of full items with 0
-  
 
   char* endptr;
   max_backups = strtoul(argv[3], &endptr, 10);
@@ -488,15 +482,15 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-	if (max_backups <= 0) {
-		write_str(STDERR_FILENO, "Invalid number of backups\n");
-		return 0;
-	}
+  if (max_backups <= 0) {
+    write_str(STDERR_FILENO, "Invalid number of backups\n");
+    return 0;
+  }
 
-	if (max_threads <= 0) {
-		write_str(STDERR_FILENO, "Invalid number of threads\n");
-		return 0;
-	}
+  if (max_threads <= 0) {
+    write_str(STDERR_FILENO, "Invalid number of threads\n");
+    return 0;
+  }
 
   if (kvs_init()) {
     write_str(STDERR_FILENO, "Failed to initialize KVS\n");
@@ -525,13 +519,11 @@ int main(int argc, char** argv) {
   host_data->queue = manager_queue;
   host_data->register_fifo_path = register_fifo_path;
 
-
-  //Create host thread
+  // Create host thread
   if(pthread_create(host_thread, NULL, manages_register_fifo, (void *)host_data)!=0 ){
     write_str(STDERR_FILENO, "pthread_create failed\n");
     result_connect = 1;
   }
-
 
   printf("Thread MAIN %ld\n", pthread_self());
   dispatch_threads(dir);
@@ -545,7 +537,6 @@ int main(int argc, char** argv) {
     wait(NULL);
     active_backups--;
   }
-
 
   // Create manager threads
  for (int i = 0; i < MAX_SESSION_COUNT; i++){
